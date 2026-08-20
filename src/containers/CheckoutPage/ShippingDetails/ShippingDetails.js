@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import classNames from 'classnames';
 
 import { FormattedMessage, intlShape } from '../../../util/reactIntl';
@@ -8,6 +8,8 @@ import getCountryCodes from '../../../translations/countryCodes';
 import { FieldSelect, FieldTextInput, Heading } from '../../../components';
 
 import css from './ShippingDetails.module.css';
+
+const DEFAULT_COUNTRY_CODE = 'US';
 
 /**
  * A component that displays the shipping details form on the checkout page.
@@ -25,6 +27,11 @@ import css from './ShippingDetails.module.css';
 const ShippingDetails = props => {
   const { rootClassName, className, locale, intl, disabled, formApi, fieldId } = props;
   const classes = classNames(rootClassName || css.root, className);
+
+  // This marketplace only ships within the US, so the country is fixed to 'US'.
+  useEffect(() => {
+    formApi.change('recipientCountry', DEFAULT_COUNTRY_CODE);
+  }, []);
 
   const optionalText = intl.formatMessage({
     id: 'ShippingDetails.optionalText',
@@ -155,7 +162,7 @@ const ShippingDetails = props => {
         <FieldSelect
           id={`${fieldId}.recipientCountry`}
           name="recipientCountry"
-          disabled={disabled}
+          disabled
           className={css.field}
           label={intl.formatMessage({ id: 'ShippingDetails.countryLabel' })}
           validate={validators.required(
