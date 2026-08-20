@@ -15,6 +15,8 @@ import { H4, Button, ExternalLink, FieldSelect, FieldRadioButton, Form } from '.
 
 import css from './StripeConnectAccountForm.module.css';
 
+const DEFAULT_COUNTRY_CODE = 'US';
+
 const getSupportedCountryCodes = supportedCountries => supportedCountries.map(c => c.code);
 
 // Hidden input field
@@ -30,7 +32,6 @@ const FieldHidden = props => {
 const CreateStripeAccountFields = props => {
   const routeConfiguration = useRouteConfiguration();
   const {
-    disabled,
     countryLabel,
     showAsRequired,
     formApi,
@@ -75,6 +76,11 @@ const CreateStripeAccountFields = props => {
     if (!hasMCC && defaultMCC) {
       formApi.change('businessProfileMCC', defaultMCC);
     }
+
+    // This marketplace only supports US accounts, so the country is fixed to 'US'.
+    if (values?.country !== DEFAULT_COUNTRY_CODE) {
+      formApi.change('country', DEFAULT_COUNTRY_CODE);
+    }
   }, []);
 
   return (
@@ -107,7 +113,7 @@ const CreateStripeAccountFields = props => {
       <FieldSelect
         id="country"
         name="country"
-        disabled={disabled}
+        disabled
         className={css.selectCountry}
         autoComplete="country"
         label={countryLabel}
@@ -278,7 +284,6 @@ const StripeConnectAccountForm = props => {
         // because Stripe doesn't allow user to change the country
         const stripeAccountFields = !stripeConnected ? (
           <CreateStripeAccountFields
-            disabled={disabled}
             showAsRequired={showAsRequired}
             countryLabel={countryLabel}
             supportedCountries={supportedCountries}
