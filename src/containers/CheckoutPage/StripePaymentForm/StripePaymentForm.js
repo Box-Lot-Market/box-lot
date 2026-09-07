@@ -4,7 +4,7 @@
  * It's also handled separately in handleSubmit function.
  */
 import React, { Component } from 'react';
-import { Form as FinalForm } from 'react-final-form';
+import { Form as FinalForm, FormSpy } from 'react-final-form';
 import arrayMutators from 'final-form-arrays';
 import classNames from 'classnames';
 
@@ -28,6 +28,8 @@ import {
 } from '../../../components';
 
 import ShippingDetails from '../ShippingDetails/ShippingDetails';
+import ShippingRates, { parseShippingRateKey } from '../ShippingRates/ShippingRates';
+import { getShippingDetailsMaybe } from '../CheckoutPageTransactionHelpers';
 
 import css from './StripePaymentForm.module.css';
 
@@ -222,6 +224,8 @@ const LocationOrShippingDetails = props => {
     locale,
     isFuzzyLocation,
     intl,
+    values,
+    listingId,
   } = props;
 
   const locationDetails = listingLocation?.building
@@ -231,13 +235,19 @@ const LocationOrShippingDetails = props => {
     : intl.formatMessage({ id: 'StripePaymentForm.locationUnknown' });
 
   return askShippingDetails ? (
-    <ShippingDetails intl={intl} formApi={formApi} locale={locale} />
+    <>
+      <ShippingDetails intl={intl} formApi={formApi} locale={locale} />
+      <ShippingRates intl={intl} values={values} listingId={listingId} form={formApi} />
+    </>
   ) : showPickUpLocation ? (
     <div className={css.locationWrapper}>
       <Heading as="h3" rootClassName={css.heading}>
         <FormattedMessage id="StripePaymentForm.pickupDetailsTitle" />
       </Heading>
       <p className={css.locationDetails}>{locationDetails}</p>
+      <p className={css.locationDetails}>
+        <FormattedMessage id="StripePaymentForm.pickupAddressAfterPay" />
+      </p>
     </div>
   ) : showLocation && !isFuzzyLocation ? (
     <div className={css.locationWrapper}>
@@ -312,6 +322,7 @@ class StripePaymentForm extends Component {
     this.handleStripeJsLoadedEvent = this.handleStripeJsLoadedEvent.bind(this);
     this.finalFormAPI = null;
     this.cardContainer = null;
+    this.lastShippingRateKey = null;
   }
 
   handleStripeJsLoadedEvent() {
@@ -499,6 +510,8 @@ class StripePaymentForm extends Component {
       transactionFieldConfigs = [],
       showTransactionFields,
       values,
+      listingId,
+      onShippingRateSelected,
     } = formRenderProps;
 
     this.finalFormAPI = formApi;
@@ -606,7 +619,32 @@ class StripePaymentForm extends Component {
           formApi={formApi}
           locale={locale}
           intl={intl}
+          values={values}
+          listingId={listingId}
         />
+        {askShippingDetails ? (
+          <FormSpy
+            subscription={{ values: true }}
+            onChange={({ values: formValues }) => {
+              const key = formValues.shippingRateKey || null;
+              if (key === this.lastShippingRateKey) {
+                return;
+              }
+              this.lastShippingRateKey = key;
+              if (typeof onShippingRateSelected !== 'function') {
+                return;
+              }
+              if (!key) {
+                onShippingRateSelected(null);
+                return;
+              }
+              onShippingRateSelected({
+                ...parseShippingRateKey(key),
+                ...getShippingDetailsMaybe(formValues),
+              });
+            }}
+          />
+        ) : null}
 
         {billingDetailsNeeded && !loadingData ? (
           <React.Fragment>

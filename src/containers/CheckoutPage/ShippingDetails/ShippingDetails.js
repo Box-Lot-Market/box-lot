@@ -68,13 +68,13 @@ const ShippingDetails = props => {
         className={css.fieldFullWidth}
         type="text"
         autoComplete="shipping phoneNumber"
-        label={intl.formatMessage(
-          { id: 'ShippingDetails.recipientPhoneNumberLabel' },
-          { optionalText: optionalText }
-        )}
+        label={intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberLabel' })}
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.recipientPhoneNumberPlaceholder',
         })}
+        validate={validators.required(
+          intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberRequired' })
+        )}
         onUnmount={() => formApi.change('recipientPhoneNumber', undefined)}
       />
       <div className={css.formRow}>
@@ -151,11 +151,9 @@ const ShippingDetails = props => {
           className={css.field}
           type="text"
           autoComplete="shipping address-level1"
-          label={intl.formatMessage(
-            { id: 'ShippingDetails.stateLabel' },
-            { optionalText: optionalText }
-          )}
+          label={intl.formatMessage({ id: 'ShippingDetails.stateLabel' })}
           placeholder={intl.formatMessage({ id: 'ShippingDetails.statePlaceholder' })}
+          validate={validators.required(intl.formatMessage({ id: 'ShippingDetails.stateRequired' }))}
           onUnmount={() => formApi.change('recipientState', undefined)}
         />
 

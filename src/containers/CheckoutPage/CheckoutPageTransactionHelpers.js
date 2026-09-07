@@ -1,4 +1,5 @@
 // Import contexts and util modules
+import { createShippingLabel } from '../../util/api';
 import { findRouteByRouteName } from '../../util/routes';
 import { ensureStripeCustomer, ensureTransaction } from '../../util/data';
 import { formatMoney } from '../../util/currency';
@@ -287,8 +288,13 @@ export const processCheckoutWithPayment = (orderParams, extraPaymentParams) => {
       : onConfirmPayment(transactionId, transitionName, {});
 
     return orderPromise.then(order => {
-      // Store the returned transaction (order)
       persistTransaction(order, pageData, storeData, setPageData, sessionStorageKey);
+      const deliveryMethod = order?.attributes?.protectedData?.deliveryMethod;
+      if (deliveryMethod === 'shipping' && order?.id) {
+        return createShippingLabel({ transactionId: order.id })
+          .catch(() => null)
+          .then(() => order);
+      }
       return order;
     });
   };

@@ -387,6 +387,18 @@
   }
 }
 
+.shippingStatusContent {
+  composes: marketplaceSmallFontStyles from global;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+
+  @media (--viewportMedium) {
+    margin-top: 8px;
+  }
+}
+
 .bookingLocationContent,
 .pickupInfoContent {
   composes: marketplaceSmallFontStyles from global;

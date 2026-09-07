@@ -57,7 +57,7 @@ export const search = {
 // coordinates are still accessible in the HTTP requests and the
 // Redux store.
 export const fuzzy = {
-  enabled: false,
+  enabled: true,
 
   // Amount of maximum offset in meters that is applied to obfuscate
   // the original coordinates. The actual value is random, but the

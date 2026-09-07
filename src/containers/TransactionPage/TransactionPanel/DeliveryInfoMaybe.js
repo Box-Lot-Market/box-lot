@@ -18,7 +18,13 @@ const DeliveryInfoMaybe = props => {
   const isPickup = deliveryMethod === 'pickup';
 
   if (isPickup) {
-    const pickupLocation = listing?.attributes?.publicData?.location || {};
+    const pickupLocation = protectedData?.pickupAddress
+      ? {
+          address: [protectedData.pickupAddress.street, protectedData.pickupAddress.building]
+            .filter(Boolean)
+            .join(', '),
+        }
+      : listing?.attributes?.publicData?.location || {};
     return (
       <div className={classes}>
         <Heading as="h3" rootClassName={css.sectionHeading}>

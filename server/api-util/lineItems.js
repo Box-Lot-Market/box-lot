@@ -1,7 +1,6 @@
 const {
   calculateQuantityFromDates,
   calculateQuantityFromHours,
-  calculateShippingFee,
   getProviderCommissionMaybe,
   getCustomerCommissionMaybe,
 } = require('./lineItemHelpers');
@@ -11,31 +10,22 @@ const { Money } = types;
 /**
  * Get quantity and add extra line-items that are related to delivery method
  *
- * @param {Object} orderData should contain stockReservationQuantity and deliveryMethod
- * @param {*} publicData should contain shipping prices
+ * @param {Object} orderData should contain stockReservationQuantity, deliveryMethod,
+ *   and optionally shippingFeeInSubunits from a live Envia quote.
+ * @param {*} publicData listing public data (parcel fields live here; flat fees are unused)
  * @param {*} currency should point to the currency of listing's price.
  */
 const getItemQuantityAndLineItems = (orderData, publicData, currency) => {
-  // Check delivery method and shipping prices
   const quantity = orderData ? orderData.stockReservationQuantity : null;
   const deliveryMethod = orderData && orderData.deliveryMethod;
   const isShipping = deliveryMethod === 'shipping';
-  const isPickup = deliveryMethod === 'pickup';
-  const { shippingPriceInSubunitsOneItem, shippingPriceInSubunitsAdditionalItems } =
-    publicData || {};
+  const shippingFeeInSubunits = orderData?.shippingFeeInSubunits;
+  const hasLiveShippingFee =
+    isShipping && Number.isInteger(shippingFeeInSubunits) && shippingFeeInSubunits >= 0;
 
-  // Calculate shipping fee if applicable
-  const shippingFee = isShipping
-    ? calculateShippingFee(
-        shippingPriceInSubunitsOneItem,
-        shippingPriceInSubunitsAdditionalItems,
-        currency,
-        quantity
-      )
-    : null;
+  const shippingFee = hasLiveShippingFee ? new Money(shippingFeeInSubunits, currency) : null;
 
-  // Add line-item for given delivery method.
-  // Note: by default, pickup considered as free and, therefore, we don't add pickup fee line-item
+  // Pickup is free. Shipping uses the Envia quote stored on orderData, never listing flat fees.
   const deliveryLineItem = !!shippingFee
     ? [
         {

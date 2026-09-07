@@ -11,6 +11,7 @@ import {
 } from '../../../../util/types';
 import { displayDeliveryPickup, displayDeliveryShipping } from '../../../../util/configHelpers';
 import { types as sdkTypes } from '../../../../util/sdkLoader';
+import { publicLocationAddress, pickupAddressFromPlace } from '../../../../util/shipping';
 
 // Import shared components
 import { H3, ListingLink } from '../../../../components';
@@ -39,9 +40,13 @@ const getInitialValues = props => {
   const {
     shippingEnabled,
     pickupEnabled,
-    shippingPriceInSubunitsOneItem,
-    shippingPriceInSubunitsAdditionalItems,
+    parcelWeightLb,
+    parcelLengthIn,
+    parcelWidthIn,
+    parcelHeightIn,
+    parcelDeclaredValueSubunits,
   } = publicData;
+  const pickupAddress = listing?.attributes?.privateData?.pickupAddress;
   const deliveryOptions = [];
 
   if (shippingEnabled || (!displayMultipleDelivery && displayShipping)) {
@@ -52,27 +57,36 @@ const getInitialValues = props => {
   }
 
   const currency = price?.currency || marketplaceCurrency;
-  const shippingOneItemAsMoney =
-    shippingPriceInSubunitsOneItem != null
-      ? new Money(shippingPriceInSubunitsOneItem, currency)
+  const declaredValueAsMoney =
+    parcelDeclaredValueSubunits != null
+      ? new Money(parcelDeclaredValueSubunits, currency)
+      : price
+      ? new Money(price.amount, currency)
       : null;
-  const shippingAdditionalItemsAsMoney =
-    shippingPriceInSubunitsAdditionalItems != null
-      ? new Money(shippingPriceInSubunitsAdditionalItems, currency)
-      : null;
+
+  const locationAddress = pickupAddress?.street || address;
 
   // Initial values for the form
   return {
-    building,
+    building: pickupAddress?.building || building,
     location: locationFieldsPresent
       ? {
-          search: address,
-          selectedPlace: { address, origin: geolocation },
+          search: locationAddress,
+          selectedPlace: {
+            address: locationAddress,
+            origin: geolocation,
+            city: pickupAddress?.city,
+            state: pickupAddress?.state,
+            postalCode: pickupAddress?.postalCode,
+          },
         }
       : { search: undefined, selectedPlace: undefined },
     deliveryOptions,
-    shippingPriceInSubunitsOneItem: shippingOneItemAsMoney,
-    shippingPriceInSubunitsAdditionalItems: shippingAdditionalItemsAsMoney,
+    parcelWeightLb: parcelWeightLb != null ? String(parcelWeightLb) : undefined,
+    parcelLengthIn: parcelLengthIn != null ? String(parcelLengthIn) : undefined,
+    parcelWidthIn: parcelWidthIn != null ? String(parcelWidthIn) : undefined,
+    parcelHeightIn: parcelHeightIn != null ? String(parcelHeightIn) : undefined,
+    parcelDeclaredValue: declaredValueAsMoney,
   };
 };
 
@@ -153,35 +167,49 @@ const EditListingDeliveryPanel = props => {
         <EditListingDeliveryForm
           className={css.form}
           initialValues={state.initialValues}
+          currentUser={props.currentUser}
           onSubmit={values => {
             const {
               building = '',
               location,
-              shippingPriceInSubunitsOneItem,
-              shippingPriceInSubunitsAdditionalItems,
               deliveryOptions,
+              parcelWeightLb,
+              parcelLengthIn,
+              parcelWidthIn,
+              parcelHeightIn,
+              parcelDeclaredValue,
             } = values;
 
             const shippingEnabled = deliveryOptions.includes('shipping');
             const pickupEnabled = deliveryOptions.includes('pickup');
-            const address = location?.selectedPlace?.address || null;
-            const origin = location?.selectedPlace?.origin || null;
+            const selectedPlace = location?.selectedPlace;
+            const origin = selectedPlace?.origin || null;
+            const fullStreet = selectedPlace?.address || null;
+            const coarseAddress = publicLocationAddress(selectedPlace);
 
             const pickupDataMaybe =
-              pickupEnabled && address ? { location: { address, building } } : {};
+              pickupEnabled && fullStreet
+                ? { location: { address: coarseAddress || fullStreet, building: '' } }
+                : { location: null };
 
-            const shippingDataMaybe =
-              shippingEnabled && shippingPriceInSubunitsOneItem != null
-                ? {
-                    // Note: we only save the "amount" because currency should not differ from listing's price.
-                    // Money is always dealt in subunits (e.g. cents) to avoid float calculations.
-                    shippingPriceInSubunitsOneItem: shippingPriceInSubunitsOneItem.amount,
-                    shippingPriceInSubunitsAdditionalItems:
-                      shippingPriceInSubunitsAdditionalItems?.amount,
-                  }
-                : {};
+            const shippingDataMaybe = shippingEnabled
+              ? {
+                  parcelWeightLb: Number(parcelWeightLb),
+                  parcelLengthIn: Number(parcelLengthIn),
+                  parcelWidthIn: Number(parcelWidthIn),
+                  parcelHeightIn: Number(parcelHeightIn),
+                  parcelDeclaredValueSubunits: parcelDeclaredValue?.amount,
+                  shippingPriceInSubunitsOneItem: null,
+                  shippingPriceInSubunitsAdditionalItems: null,
+                }
+              : {
+                  parcelWeightLb: null,
+                  parcelLengthIn: null,
+                  parcelWidthIn: null,
+                  parcelHeightIn: null,
+                  parcelDeclaredValueSubunits: null,
+                };
 
-            // New values for listing attributes
             const updateValues = {
               geolocation: origin,
               publicData: {
@@ -190,18 +218,27 @@ const EditListingDeliveryPanel = props => {
                 shippingEnabled,
                 ...shippingDataMaybe,
               },
+              privateData: {
+                pickupAddress:
+                  pickupEnabled && fullStreet
+                    ? pickupAddressFromPlace(selectedPlace, building)
+                    : null,
+              },
             };
 
-            // Save the initialValues to state
-            // LocationAutocompleteInput doesn't have internal state
-            // and therefore re-rendering would overwrite the values during XHR call.
             setState({
               initialValues: {
                 building,
-                location: { search: address, selectedPlace: { address, origin } },
-                shippingPriceInSubunitsOneItem,
-                shippingPriceInSubunitsAdditionalItems,
+                location: {
+                  search: fullStreet,
+                  selectedPlace: { ...selectedPlace, address: fullStreet, origin },
+                },
                 deliveryOptions,
+                parcelWeightLb,
+                parcelLengthIn,
+                parcelWidthIn,
+                parcelHeightIn,
+                parcelDeclaredValue,
               },
             });
             onSubmit(updateValues);

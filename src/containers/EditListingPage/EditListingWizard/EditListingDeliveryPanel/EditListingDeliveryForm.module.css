@@ -78,6 +78,29 @@
   }
 }
 
+.dimensionRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+
+  @media (--viewportMedium) {
+    margin-bottom: 32px;
+  }
+}
+
+.dimensionField {
+  flex: 1;
+}
+
+.originHint {
+  margin: 0 0 24px 30px;
+  color: var(--colorGrey700);
+
+  @media (--viewportMedium) {
+    margin-left: 60px;
+  }
+}
+
 .submitButton {
   margin-top: auto;
   margin-bottom: 24px;

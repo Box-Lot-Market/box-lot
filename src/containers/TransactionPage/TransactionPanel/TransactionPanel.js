@@ -15,6 +15,7 @@ import BreakdownMaybe from './BreakdownMaybe';
 import DetailCardHeadingsMaybe from './DetailCardHeadingsMaybe';
 import DetailCardImage from './DetailCardImage';
 import DeliveryInfoMaybe from './DeliveryInfoMaybe';
+import ShippingStatusMaybe from './ShippingStatusMaybe';
 import BookingLocationMaybe from './BookingLocationMaybe';
 import FeedSection from './FeedSection';
 import DiminishedActionButtonMaybe from './DiminishedActionButtonMaybe';
@@ -130,6 +131,7 @@ export class TransactionPanelComponent extends Component {
       hasViewingRights,
       transactionFieldsComponent,
       sendMessageForm,
+      transactionId,
     } = this.props;
 
     const hasTransitions = transitions.length > 0;
@@ -269,6 +271,13 @@ export class TransactionPanelComponent extends Component {
                   protectedData={protectedData}
                   listing={listing}
                   locale={config.localization.locale}
+                />
+                <ShippingStatusMaybe
+                  className={css.deliveryInfoSection}
+                  transactionId={transactionId}
+                  deliveryMethod={deliveryMethod}
+                  isProvider={isProvider}
+                  isCustomer={isCustomer}
                 />
                 <BookingLocationMaybe
                   className={css.deliveryInfoSection}

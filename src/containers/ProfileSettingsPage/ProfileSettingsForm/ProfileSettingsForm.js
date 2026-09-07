@@ -1,16 +1,18 @@
-import React, { Component } from 'react';
+import React, { Component, useEffect, useRef } from 'react';
 import { compose } from 'redux';
 import { Field, Form as FinalForm } from 'react-final-form';
 import isEqual from 'lodash/isEqual';
 import classNames from 'classnames';
 import arrayMutators from 'final-form-arrays';
 
+import { useConfiguration } from '../../../context/configurationContext';
 import { FormattedMessage, injectIntl, intlShape } from '../../../util/reactIntl';
 import { ensureCurrentUser } from '../../../util/data';
 import { propTypes } from '../../../util/types';
 import * as validators from '../../../util/validators';
 import { isUploadImageOverLimitError } from '../../../util/errors';
 import { getPropsForCustomUserFieldInputs } from '../../../util/userHelpers';
+import { originFieldsFromPlace } from '../../../util/shipping';
 
 import {
   Form,
@@ -19,6 +21,7 @@ import {
   ImageFromFile,
   IconSpinner,
   FieldTextInput,
+  FieldLocationAutocompleteInput,
   H4,
   CustomExtendedDataField,
 } from '../../../components';
@@ -27,6 +30,8 @@ import css from './ProfileSettingsForm.module.css';
 
 const ACCEPT_IMAGES = 'image/*';
 const UPLOAD_CHANGE_DELAY = 2000; // Show spinner so that browser has time to load img srcset
+const identity = v => v;
+const ORIGIN_SEARCH_VALUE_FROM_PLACE = place => place.street || place.address || '';
 
 const DisplayNameMaybe = props => {
   const { userTypeConfig, intl } = props;
@@ -71,6 +76,107 @@ const DisplayNameMaybe = props => {
         <FormattedMessage id="ProfileSettingsForm.displayNameInfo" />
       </p>
     </div>
+  );
+};
+
+/**
+ * Origin address fields with Mapbox/Google street suggestions.
+ *
+ * @param {Object} props
+ * @param {Object} props.form - Final Form API
+ * @param {Object} props.values - Current form values
+ * @param {intlShape} props.intl
+ * @returns {JSX.Element}
+ */
+const OriginAddressFields = props => {
+  const { form, values, intl } = props;
+  const config = useConfiguration();
+  const prevPlaceKeyRef = useRef(null);
+  const selectedPlace = values.originLocation?.selectedPlace;
+  const placeKey = selectedPlace
+    ? [
+        selectedPlace.street,
+        selectedPlace.city,
+        selectedPlace.state,
+        selectedPlace.postalCode,
+      ].join('|')
+    : '';
+
+  useEffect(() => {
+    if (!placeKey) {
+      prevPlaceKeyRef.current = placeKey;
+      return;
+    }
+    // Skip the first run so a saved address does not mark the form dirty.
+    if (prevPlaceKeyRef.current === null) {
+      prevPlaceKeyRef.current = placeKey;
+      return;
+    }
+    if (prevPlaceKeyRef.current === placeKey) {
+      return;
+    }
+    prevPlaceKeyRef.current = placeKey;
+
+    const fields = originFieldsFromPlace(selectedPlace);
+    form.batch(() => {
+      if (fields.city) {
+        form.change('originCity', fields.city);
+      }
+      if (fields.state) {
+        form.change('originState', fields.state);
+      }
+      if (fields.postalCode) {
+        form.change('originPostalCode', fields.postalCode);
+      }
+    });
+  }, [placeKey]);
+
+  const isGoogleMaps = config.maps?.mapProvider === 'googleMaps';
+  const searchTypes = isGoogleMaps ? ['street_address', 'premise'] : ['address'];
+
+  return (
+    <>
+      <FieldLocationAutocompleteInput
+        rootClassName={css.originLocation}
+        inputClassName={css.originLocationInput}
+        iconClassName={css.originLocationIcon}
+        predictionsClassName={css.originLocationPredictions}
+        name="originLocation"
+        id="originLocation"
+        label={intl.formatMessage({ id: 'ProfileSettingsForm.originStreetLabel' })}
+        placeholder={intl.formatMessage({
+          id: 'ProfileSettingsForm.originStreetPlaceholder',
+        })}
+        useDefaultPredictions={false}
+        closeOnBlur
+        countryLimit={['US']}
+        searchTypes={searchTypes}
+        searchValueFromPlace={ORIGIN_SEARCH_VALUE_FROM_PLACE}
+        format={identity}
+        valueFromForm={values.originLocation}
+      />
+      <FieldTextInput
+        className={css.row}
+        type="text"
+        id="originCity"
+        name="originCity"
+        label={intl.formatMessage({ id: 'ProfileSettingsForm.originCityLabel' })}
+      />
+      <FieldTextInput
+        className={css.row}
+        type="text"
+        id="originState"
+        name="originState"
+        label={intl.formatMessage({ id: 'ProfileSettingsForm.originStateLabel' })}
+      />
+      <FieldTextInput
+        className={css.row}
+        type="text"
+        id="originPostalCode"
+        name="originPostalCode"
+        label={intl.formatMessage({ id: 'ProfileSettingsForm.originPostalCodeLabel' })}
+      />
+    </>
   );
 };
 
@@ -127,6 +233,7 @@ class ProfileSettingsFormComponent extends Component {
       <FinalForm
         {...this.props}
         mutators={{ ...arrayMutators }}
+        initialValuesEqual={isEqual}
         render={fieldRenderProps => {
           const {
             className,
@@ -388,6 +495,29 @@ class ProfileSettingsFormComponent extends Component {
                 <p className={css.extraInfo}>
                   <FormattedMessage id="ProfileSettingsForm.bioInfo" values={{ marketplaceName }} />
                 </p>
+              </div>
+              <div className={classNames(css.sectionContainer)}>
+                <H4 as="h2" className={css.sectionTitle}>
+                  <FormattedMessage id="ProfileSettingsForm.originHeading" />
+                </H4>
+                <p className={css.extraInfo}>
+                  <FormattedMessage id="ProfileSettingsForm.originInfo" />
+                </p>
+                <FieldTextInput
+                  className={css.row}
+                  type="text"
+                  id="originName"
+                  name="originName"
+                  label={intl.formatMessage({ id: 'ProfileSettingsForm.originNameLabel' })}
+                />
+                <FieldTextInput
+                  className={css.row}
+                  type="text"
+                  id="originPhone"
+                  name="originPhone"
+                  label={intl.formatMessage({ id: 'ProfileSettingsForm.originPhoneLabel' })}
+                />
+                <OriginAddressFields form={form} values={values} intl={intl} />
               </div>
               <div className={classNames(css.sectionContainer, css.lastSection)}>
                 {userFieldProps.map(({ key, ...fieldProps }) => (

@@ -151,3 +151,35 @@ export const createUserWithIdp = body => {
 export const deleteUserAccount = body => {
   return post('/api/delete-account', body);
 };
+
+export const fetchShippingRates = body => {
+  return post('/api/shipping/rates', body);
+};
+
+export const createShippingLabel = body => {
+  return post('/api/shipping/create-label', body);
+};
+
+export const fetchShippingStatus = body => {
+  return post('/api/shipping/status', body);
+};
+
+export const downloadShippingLabel = body => {
+  const url = `${apiBaseUrl()}/api/shipping/label`;
+  return window
+    .fetch(url, {
+      method: methods.POST,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/transit+json' },
+      body: serialize(body),
+    })
+    .then(res => {
+      if (res.status >= 400) {
+        return res.json().then(data => {
+          const e = Object.assign(new Error(), data);
+          throw e;
+        });
+      }
+      return res.blob();
+    });
+};

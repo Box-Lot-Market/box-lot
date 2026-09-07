@@ -12,7 +12,9 @@ import {
   autocompletePlaceSelected,
   composeValidators,
   required,
+  numberAtLeast,
 } from '../../../../util/validators';
+import { isOriginComplete, originFromCurrentUser } from '../../../../util/shipping';
 
 // Import shared components
 import {
@@ -22,6 +24,7 @@ import {
   FieldCurrencyInput,
   FieldTextInput,
   FieldCheckbox,
+  NamedLink,
 } from '../../../../components';
 
 // Import modules from this directory
@@ -68,6 +71,7 @@ export const EditListingDeliveryForm = props => (
         listingTypeConfig,
         marketplaceCurrency,
         allowOrdersOfMultipleItems = false,
+        currentUser,
         saveActionMsg,
         updated,
         updateInProgress,
@@ -112,8 +116,14 @@ export const EditListingDeliveryForm = props => (
       const classes = classNames(css.root, className);
       const submitReady = (updated && pristine) || ready;
       const submitInProgress = updateInProgress;
+      const originComplete = isOriginComplete(originFromCurrentUser(currentUser));
+      const shippingDisabled = !originComplete;
       const submitDisabled =
-        invalid || disabled || submitInProgress || (!shippingEnabled && !pickupEnabled);
+        invalid ||
+        disabled ||
+        submitInProgress ||
+        (!shippingEnabled && !pickupEnabled) ||
+        (shippingEnabled && shippingDisabled);
 
       const shippingLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.shippingLabel' });
       const pickupLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.pickupLabel' });
@@ -209,22 +219,120 @@ export const EditListingDeliveryForm = props => (
             name="deliveryOptions"
             label={shippingLabel}
             value="shipping"
+            disabled={shippingDisabled && !shippingEnabled}
           />
+          {shippingDisabled ? (
+            <p className={css.originHint}>
+              <FormattedMessage
+                id="EditListingDeliveryForm.originRequired"
+                values={{
+                  profileSettingsLink: (
+                    <NamedLink name="ProfileSettingsPage">
+                      <FormattedMessage id="EditListingDeliveryForm.originRequiredLink" />
+                    </NamedLink>
+                  ),
+                }}
+              />
+            </p>
+          ) : null}
 
           <div className={shippingClasses}>
-            <FieldCurrencyInput
-              id={
-                formId
-                  ? `${formId}.shippingPriceInSubunitsOneItem`
-                  : 'shippingPriceInSubunitsOneItem'
+            <FieldTextInput
+              id={`${formId}.parcelWeightLb`}
+              name="parcelWeightLb"
+              className={css.input}
+              type="number"
+              min="0.1"
+              step="0.1"
+              label={intl.formatMessage({ id: 'EditListingDeliveryForm.parcelWeightLabel' })}
+              placeholder={intl.formatMessage({
+                id: 'EditListingDeliveryForm.parcelWeightPlaceholder',
+              })}
+              disabled={!shippingEnabled}
+              validate={
+                shippingEnabled
+                  ? composeValidators(
+                      required(
+                        intl.formatMessage({ id: 'EditListingDeliveryForm.parcelWeightRequired' })
+                      ),
+                      numberAtLeast(
+                        intl.formatMessage({ id: 'EditListingDeliveryForm.parcelWeightRequired' }),
+                        1
+                      )
+                    )
+                  : null
               }
-              name="shippingPriceInSubunitsOneItem"
+              hideErrorMessage={!shippingEnabled}
+              key={shippingEnabled ? 'weightValidation' : 'noWeightValidation'}
+            />
+            <div className={css.dimensionRow}>
+              <FieldTextInput
+                id={`${formId}.parcelLengthIn`}
+                name="parcelLengthIn"
+                className={css.dimensionField}
+                type="number"
+                min="1"
+                step="1"
+                label={intl.formatMessage({ id: 'EditListingDeliveryForm.parcelLengthLabel' })}
+                disabled={!shippingEnabled}
+                validate={
+                  shippingEnabled
+                    ? required(
+                        intl.formatMessage({ id: 'EditListingDeliveryForm.parcelDimensionRequired' })
+                      )
+                    : null
+                }
+                hideErrorMessage={!shippingEnabled}
+                key={shippingEnabled ? 'lengthValidation' : 'noLengthValidation'}
+              />
+              <FieldTextInput
+                id={`${formId}.parcelWidthIn`}
+                name="parcelWidthIn"
+                className={css.dimensionField}
+                type="number"
+                min="1"
+                step="1"
+                label={intl.formatMessage({ id: 'EditListingDeliveryForm.parcelWidthLabel' })}
+                disabled={!shippingEnabled}
+                validate={
+                  shippingEnabled
+                    ? required(
+                        intl.formatMessage({ id: 'EditListingDeliveryForm.parcelDimensionRequired' })
+                      )
+                    : null
+                }
+                hideErrorMessage={!shippingEnabled}
+                key={shippingEnabled ? 'widthValidation' : 'noWidthValidation'}
+              />
+              <FieldTextInput
+                id={`${formId}.parcelHeightIn`}
+                name="parcelHeightIn"
+                className={css.dimensionField}
+                type="number"
+                min="1"
+                step="1"
+                label={intl.formatMessage({ id: 'EditListingDeliveryForm.parcelHeightLabel' })}
+                disabled={!shippingEnabled}
+                validate={
+                  shippingEnabled
+                    ? required(
+                        intl.formatMessage({ id: 'EditListingDeliveryForm.parcelDimensionRequired' })
+                      )
+                    : null
+                }
+                hideErrorMessage={!shippingEnabled}
+                key={shippingEnabled ? 'heightValidation' : 'noHeightValidation'}
+              />
+            </div>
+            <FieldCurrencyInput
+              id={`${formId}.parcelDeclaredValue`}
+              name="parcelDeclaredValue"
               className={css.input}
               label={intl.formatMessage({
-                id: 'EditListingDeliveryForm.shippingOneItemLabel',
+                id: 'EditListingDeliveryForm.parcelDeclaredValueLabel',
               })}
               placeholder={intl.formatMessage({
-                id: 'EditListingDeliveryForm.shippingOneItemPlaceholder',
+                id: 'EditListingDeliveryForm.parcelDeclaredValuePlaceholder',
               })}
               currencyConfig={currencyConfig}
               disabled={!shippingEnabled}
@@ -232,57 +340,14 @@ export const EditListingDeliveryForm = props => (
                 shippingEnabled
                   ? required(
                       intl.formatMessage({
-                        id: 'EditListingDeliveryForm.shippingOneItemRequired',
+                        id: 'EditListingDeliveryForm.parcelDeclaredValueRequired',
                       })
                     )
                   : null
               }
               hideErrorMessage={!shippingEnabled}
-              // Whatever parameters are being used to calculate
-              // the validation function need to be combined in such
-              // a way that, when they change, this key prop
-              // changes, thus reregistering this field (and its
-              // validation function) with Final Form.
-              // See example: https://codesandbox.io/s/changing-field-level-validators-zc8ei
-              key={shippingEnabled ? 'oneItemValidation' : 'noOneItemValidation'}
+              key={shippingEnabled ? 'declaredValidation' : 'noDeclaredValidation'}
             />
-
-            {allowOrdersOfMultipleItems ? (
-              <FieldCurrencyInput
-                id={
-                  formId
-                    ? `${formId}.shippingPriceInSubunitsAdditionalItems`
-                    : 'shippingPriceInSubunitsAdditionalItems'
-                }
-                name="shippingPriceInSubunitsAdditionalItems"
-                className={css.input}
-                label={intl.formatMessage({
-                  id: 'EditListingDeliveryForm.shippingAdditionalItemsLabel',
-                })}
-                placeholder={intl.formatMessage({
-                  id: 'EditListingDeliveryForm.shippingAdditionalItemsPlaceholder',
-                })}
-                currencyConfig={currencyConfig}
-                disabled={!shippingEnabled}
-                validate={
-                  shippingEnabled
-                    ? required(
-                        intl.formatMessage({
-                          id: 'EditListingDeliveryForm.shippingAdditionalItemsRequired',
-                        })
-                      )
-                    : null
-                }
-                hideErrorMessage={!shippingEnabled}
-                // Whatever parameters are being used to calculate
-                // the validation function need to be combined in such
-                // a way that, when they change, this key prop
-                // changes, thus reregistering this field (and its
-                // validation function) with Final Form.
-                // See example: https://codesandbox.io/s/changing-field-level-validators-zc8ei
-                key={shippingEnabled ? 'additionalItemsValidation' : 'noAdditionalItemsValidation'}
-              />
-            ) : null}
           </div>
 
           <Button

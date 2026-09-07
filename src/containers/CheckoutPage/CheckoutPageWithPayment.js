@@ -26,7 +26,7 @@ import {
 import { H3, H4, NamedLink, OrderBreakdown, Page, TopbarSimplified } from '../../components';
 
 // Session helpers file needs to be imported before other CheckoutPage modules that use it
-import { clearData } from './CheckoutPageSessionHelpers';
+import { clearData, storeData } from './CheckoutPageSessionHelpers';
 
 import {
   bookingDatesMaybe,
@@ -43,6 +43,7 @@ import {
 import { getErrorMessages } from './ErrorMessages';
 
 import StripePaymentForm from './StripePaymentForm/StripePaymentForm';
+import { parseShippingRateKey } from './ShippingRates/ShippingRates';
 import DetailsSideCard from './DetailsSideCard';
 import MobileListingImage from './MobileListingImage';
 import MobileOrderBreakdown from './MobileOrderBreakdown';
@@ -123,6 +124,10 @@ const getOrderParams = (
   const seatsMaybe = seats ? { seats } : {};
   const deliveryMethod = pageData.orderData?.deliveryMethod;
   const deliveryMethodMaybe = deliveryMethod ? { deliveryMethod } : {};
+  const shippingCarrier = pageData.orderData?.shippingCarrier;
+  const shippingService = pageData.orderData?.shippingService;
+  const shippingQuoteMaybe =
+    shippingCarrier && shippingService ? { shippingCarrier, shippingService } : {};
   const { listingType, unitType, priceVariants } = pageData?.listing?.attributes?.publicData || {};
 
   // price variant data for fixed duration bookings
@@ -137,6 +142,7 @@ const getOrderParams = (
     protectedData: {
       ...getTransactionTypeData(listingType, unitType, config),
       ...deliveryMethodMaybe,
+      ...shippingQuoteMaybe,
       ...shippingDetails,
       ...priceVariantMaybe,
       ...transactionFieldProtectedData,
@@ -156,6 +162,7 @@ const getOrderParams = (
   const orderParams = {
     listingId: pageData?.listing?.id,
     ...deliveryMethodMaybe,
+    ...shippingQuoteMaybe,
     ...quantityMaybe,
     ...seatsMaybe,
     ...bookingDatesMaybe(pageData.orderData?.bookingDates),
@@ -314,6 +321,16 @@ const handleSubmit = (values, process, props, stripe, submitting, setSubmitting)
   };
 
   const shippingDetails = getShippingDetailsMaybe(formValues);
+  const shippingRateMaybe = parseShippingRateKey(formValues.shippingRateKey);
+  const pageDataWithShipping = {
+    ...pageData,
+    orderData: {
+      ...pageData.orderData,
+      ...shippingRateMaybe,
+      ...shippingDetails,
+    },
+  };
+  requestPaymentParams.pageData = pageDataWithShipping;
   // Note: optionalPaymentParams contains Stripe paymentMethod,
   // but that can also be passed on Step 2
   // stripe.confirmCardPayment(stripe, { payment_method: stripePaymentMethodId })
@@ -327,7 +344,7 @@ const handleSubmit = (values, process, props, stripe, submitting, setSubmitting)
   // These are the order parameters for the first payment-related transition
   // which is either initiate-transition or initiate-transition-after-enquiry
   const orderParams = getOrderParams(
-    pageData,
+    pageDataWithShipping,
     shippingDetails,
     optionalPaymentParams,
     config,
@@ -474,6 +491,9 @@ export const CheckoutPageWithPayment = props => {
     transactionFieldConfigs = [],
     showTransactionFields,
     config,
+    setPageData,
+    sessionStorageKey,
+    fetchSpeculatedTransaction,
   } = props;
 
   // Since the listing data is already given from the ListingPage
@@ -574,6 +594,27 @@ export const CheckoutPageWithPayment = props => {
 
   // If your marketplace works mostly in one country you can use initial values to select country automatically
   // e.g. {country: 'FI'}
+
+  const handleShippingRateSelected = ratePayload => {
+    const nextOrderData = {
+      ...pageData.orderData,
+      shippingCarrier: ratePayload?.shippingCarrier,
+      shippingService: ratePayload?.shippingService,
+      ...(ratePayload?.shippingDetails ? { shippingDetails: ratePayload.shippingDetails } : {}),
+    };
+    if (!ratePayload?.shippingCarrier) {
+      delete nextOrderData.shippingCarrier;
+      delete nextOrderData.shippingService;
+    }
+    const nextPageData = { ...pageData, orderData: nextOrderData };
+    setPageData(nextPageData);
+    storeData(nextOrderData, nextPageData.listing, nextPageData.transaction, sessionStorageKey);
+    const shippingDetailsMaybe = ratePayload?.shippingDetails
+      ? { shippingDetails: ratePayload.shippingDetails }
+      : {};
+    const orderParams = getOrderParams(nextPageData, shippingDetailsMaybe, {}, config);
+    fetchSpeculatedTransactionIfNeeded(orderParams, nextPageData, fetchSpeculatedTransaction);
+  };
 
   const initialValuesForStripePayment = { name: userName, recipientName: userName };
   const askShippingDetails =
@@ -676,6 +717,8 @@ export const CheckoutPageWithPayment = props => {
                   return onStripeInitialized(stripe, process, props);
                 }}
                 askShippingDetails={askShippingDetails}
+                listingId={listing?.id}
+                onShippingRateSelected={handleShippingRateSelected}
                 showPickUpLocation={showPickUpLocation}
                 showLocation={showLocation}
                 listingLocation={listingLocation}

@@ -45,15 +45,23 @@ class GeocoderGoogleMaps {
    * and an array of predictions. The format of the predictions is
    * only relevant for the `getPlaceDetails` function below.
    */
-  getPlacePredictions(search, countryLimit) {
+  getPlacePredictions(search, countryLimit, locale, searchTypes) {
     const limitCountriesMaybe = countryLimit
       ? {
           includedRegionCodes: countryLimit,
         }
       : {};
+    const typesMaybe = searchTypes
+      ? {
+          includedPrimaryTypes: searchTypes,
+        }
+      : {};
 
     return googleMapsUtil
-      .getPlacePredictions(search, this.getSessionToken(), limitCountriesMaybe)
+      .getPlacePredictions(search, this.getSessionToken(), {
+        ...limitCountriesMaybe,
+        ...typesMaybe,
+      })
       .then(results => {
         return {
           search,
