@@ -40,6 +40,39 @@ const placeOrigin = prediction => {
   return null;
 };
 
+const placeContext = (prediction, prefix) => {
+  const match = (prediction?.context || []).find(item =>
+    String(item.id || '').startsWith(`${prefix}.`)
+  );
+  return match?.text || '';
+};
+
+const placeStreet = prediction => {
+  const houseNumber = prediction?.address;
+  const streetName = prediction?.text;
+  const placeType = Array.isArray(prediction?.place_type) ? prediction.place_type[0] : null;
+
+  if (houseNumber && streetName) {
+    return `${houseNumber} ${streetName}`;
+  }
+  if (placeType === 'address' && streetName) {
+    return streetName;
+  }
+  return '';
+};
+
+const placeCity = prediction =>
+  placeContext(prediction, 'locality') || placeContext(prediction, 'place');
+
+const placeRegionCode = prediction => {
+  const match = (prediction?.context || []).find(item => String(item.id || '').startsWith('region.'));
+  const shortCode = match?.short_code || '';
+  if (shortCode.includes('-')) {
+    return shortCode.split('-')[1];
+  }
+  return match?.text || '';
+};
+
 const placeBounds = prediction => {
   if (prediction) {
     if (Array.isArray(prediction.bbox) && prediction.bbox.length === 4) {
@@ -99,14 +132,16 @@ class GeocoderMapbox {
    * and an array of predictions. The format of the predictions is
    * only relevant for the `getPlaceDetails` function below.
    */
-  getPlacePredictions(search, countryLimit, locale) {
+  getPlacePredictions(search, countryLimit, locale, searchTypes) {
     const limitCountriesMaybe = countryLimit ? { countries: countryLimit } : {};
+    const typesMaybe = searchTypes ? { types: searchTypes } : {};
 
     return this.getClient()
       .geocoding.forwardGeocode({
         query: search,
         limit: 5,
         ...limitCountriesMaybe,
+        ...typesMaybe,
         language: [locale],
       })
       .send()
@@ -163,6 +198,10 @@ class GeocoderMapbox {
       address: this.getPredictionAddress(prediction),
       origin: placeOrigin(prediction),
       bounds: placeBounds(prediction),
+      street: placeStreet(prediction),
+      city: placeCity(prediction),
+      state: placeRegionCode(prediction),
+      postalCode: placeContext(prediction, 'postcode'),
     });
   }
 }

@@ -41,15 +41,51 @@ const placeBounds = place => {
   return null;
 };
 
+const addressComponentByType = (components, type) =>
+  (components || []).find(component => (component.types || []).includes(type));
+
+const componentText = (component, { short = false } = {}) => {
+  if (!component) {
+    return '';
+  }
+  if (short) {
+    return component.shortText || component.short_name || '';
+  }
+  return component.longText || component.long_name || '';
+};
+
+const placeStreetFromComponents = components => {
+  const number = componentText(addressComponentByType(components, 'street_number'));
+  const route = componentText(addressComponentByType(components, 'route'));
+  return [number, route].filter(Boolean).join(' ');
+};
+
+const placeCityFromComponents = components =>
+  componentText(addressComponentByType(components, 'locality')) ||
+  componentText(addressComponentByType(components, 'sublocality_level_1')) ||
+  componentText(addressComponentByType(components, 'postal_town'));
+
+const placeStateFromComponents = components => {
+  const region = addressComponentByType(components, 'administrative_area_level_1');
+  return componentText(region, { short: true }) || componentText(region);
+};
+
+const placePostalFromComponents = components =>
+  componentText(addressComponentByType(components, 'postal_code'));
+
 /**
  * Fetches detailed information about a specific place using the new Google Maps Places API.
  *
  * @param {string} placeId - ID for a place received from the
  * autocomplete service
  * @returns {Promise<Object|undefined>} A promise that resolves to an object containing:
- *   - `adress` (string): The formatted address of the place.
+ *   - `address` (string): The formatted address of the place.
  *   - `origin` (object): The geographic origin of the place (calculated using `placeOrigin`).
  *   - `bounds` (object): The viewport bounds of the place (calculated using `placeBounds`).
+ *   - `street` (string): Street number and route.
+ *   - `city` (string)
+ *   - `state` (string)
+ *   - `postalCode` (string)
  */
 export const getPlaceDetails = async placeId => {
   try {
@@ -58,10 +94,16 @@ export const getPlaceDetails = async placeId => {
 
     await place.fetchFields({ fields: fields });
 
+    const components = place.addressComponents || [];
+
     return {
       address: place.formattedAddress,
       origin: placeOrigin(place),
       bounds: placeBounds(place),
+      street: placeStreetFromComponents(components),
+      city: placeCityFromComponents(components),
+      state: placeStateFromComponents(components),
+      postalCode: placePostalFromComponents(components),
     };
   } catch (error) {
     if (isDev) {

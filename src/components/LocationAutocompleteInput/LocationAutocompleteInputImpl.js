@@ -317,8 +317,9 @@ class LocationAutocompleteInputImplementation extends Component {
           return;
         }
         this.setState({ fetchingPlaceDetails: false });
+        const searchFromPlace = this.props.searchValueFromPlace;
         this.props.input.onChange({
-          search: place.address,
+          search: searchFromPlace ? searchFromPlace(place) : place.address,
           predictions: [],
           selectedPlace: place,
         });
@@ -364,7 +365,12 @@ class LocationAutocompleteInputImplementation extends Component {
     this.setState({ fetchingPredictions: true });
 
     return this.getGeocoder()
-      .getPlacePredictions(search, config.maps.search.countryLimit, config.localization.locale)
+      .getPlacePredictions(
+        search,
+        this.props.countryLimit || config.maps.search.countryLimit,
+        config.localization.locale,
+        this.props.searchTypes
+      )
       .then(results => {
         const { search: currentSearch } = currentValue(this.props);
         this.setState({ fetchingPredictions: false });
@@ -617,6 +623,9 @@ class LocationAutocompleteInputImplementation extends Component {
  * @param {boolean} props.closeOnBlur
  * @param {string?} props.placeholder
  * @param {boolean} props.useDefaultPredictions
+ * @param {Array<string>} [props.countryLimit] - ISO country codes that override map search config
+ * @param {Array<string>} [props.searchTypes] - Geocoder place types to request
+ * @param {Function} [props.searchValueFromPlace] - Map a selected place to the input search text
  * @param {Object} props.input
  * @param {string} props.input.name
  * @param {string|SearchData} props.input.value
