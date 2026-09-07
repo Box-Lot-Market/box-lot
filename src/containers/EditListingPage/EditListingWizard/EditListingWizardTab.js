@@ -124,6 +124,7 @@ const EditListingWizardTab = props => {
     hasPendingFileUploads,
     allFilesUploadedAndVerified,
     filesRequired,
+    currentUser,
   } = props;
 
   const { type } = params;
@@ -242,7 +243,11 @@ const EditListingWizardTab = props => {
     }
     case DELIVERY: {
       return (
-        <EditListingDeliveryPanel {...panelProps(DELIVERY)} marketplaceCurrency={config.currency} />
+        <EditListingDeliveryPanel
+          {...panelProps(DELIVERY)}
+          marketplaceCurrency={config.currency}
+          currentUser={currentUser}
+        />
       );
     }
     case FILES: {

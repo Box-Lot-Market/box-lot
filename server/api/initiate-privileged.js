@@ -10,7 +10,8 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 
-const { Money } = sharetribeSdk.types;
+const { maybeQuoteShippingOrderData, pickupAddressFromListing } = require('../api-util/shipping');
+const { getIntegrationSdk } = require('../api-util/integrationSdk');
 
 const listingPromise = (sdk, id) => sdk.listings.show({ id });
 
@@ -59,7 +60,7 @@ module.exports = (req, res) => {
   let metadataMaybe = {};
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
-    .then(([showListingResponse, fetchAssetsResponse]) => {
+    .then(async ([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
       const commissionAsset = fetchAssetsResponse.data.data[0];
 
@@ -67,13 +68,46 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
+      const mergedOrderData = getFullOrderData(orderData, bodyParams, currency);
+      const quotedOrderData = await maybeQuoteShippingOrderData(
+        bodyParams?.params?.listingId,
+        mergedOrderData,
+        currency
+      );
+
       lineItems = transactionLineItems(
         listing,
-        getFullOrderData(orderData, bodyParams, currency),
+        quotedOrderData,
         providerCommission,
         customerCommission
       );
       metadataMaybe = getMetadata(orderData, transitionName);
+
+      const protectedData = {
+        ...(bodyParams?.params?.protectedData || {}),
+      };
+      if (quotedOrderData.shippingCarrier && quotedOrderData.shippingService) {
+        protectedData.shippingCarrier = quotedOrderData.shippingCarrier;
+        protectedData.shippingService = quotedOrderData.shippingService;
+        protectedData.shippingFeeInSubunits = quotedOrderData.shippingFeeInSubunits;
+      }
+      if (quotedOrderData.deliveryMethod === 'pickup') {
+        try {
+          const integrationListing = await getIntegrationSdk().listings.show({
+            id: bodyParams?.params?.listingId,
+          });
+          const pickupAddress = pickupAddressFromListing(integrationListing.data.data);
+          if (pickupAddress) {
+            protectedData.pickupAddress = pickupAddress;
+          }
+        } catch (e) {
+          // Pickup can still proceed with the public city/state location.
+        }
+      }
+      bodyParams.params = {
+        ...bodyParams.params,
+        protectedData,
+      };
 
       return getTrustedSdk(req, res, tokenStore);
     })

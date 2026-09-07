@@ -71,6 +71,16 @@
   }
 }
 
+.shippingNote {
+  composes: marketplaceTinyFontStyles from global;
+  padding: 0 24px;
+  margin: 12px 0 0 0;
+
+  @media (--viewportMedium) {
+    padding: 0;
+  }
+}
+
 .finePrint {
   composes: marketplaceTinyFontStyles from global;
   text-align: center;

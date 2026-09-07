@@ -23,12 +23,20 @@ const initiateOrderPayloadCreator = (
   // If we already have a transaction ID, we should transition, not initiate.
   const isTransition = !!transactionId;
 
-  const { deliveryMethod, quantity, bookingDates, ...otherOrderParams } = orderParams;
+  const { deliveryMethod, quantity, bookingDates, shippingCarrier, shippingService, ...otherOrderParams } =
+    orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
   const bookingParamsMaybe = bookingDates || {};
 
   // Parameters only for client app's server
-  const orderData = deliveryMethod ? { deliveryMethod } : {};
+  const orderData = {
+    ...(deliveryMethod ? { deliveryMethod } : {}),
+    ...(shippingCarrier ? { shippingCarrier } : {}),
+    ...(shippingService ? { shippingService } : {}),
+    ...(otherOrderParams.protectedData?.shippingDetails
+      ? { shippingDetails: otherOrderParams.protectedData.shippingDetails }
+      : {}),
+  };
 
   // Parameters for Marketplace API
   const transitionParams = {
@@ -298,6 +306,8 @@ const speculateTransactionPayloadCreator = (
     priceVariantName,
     quantity,
     bookingDates,
+    shippingCarrier,
+    shippingService,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -307,6 +317,11 @@ const speculateTransactionPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
+    ...(shippingCarrier ? { shippingCarrier } : {}),
+    ...(shippingService ? { shippingService } : {}),
+    ...(otherOrderParams.protectedData?.shippingDetails
+      ? { shippingDetails: otherOrderParams.protectedData.shippingDetails }
+      : {}),
   };
 
   // Parameters for Marketplace API

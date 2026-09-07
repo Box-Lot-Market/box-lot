@@ -262,6 +262,12 @@ const renderForm = formRenderProps => {
         sectionHeadingAs={sectionHeadingAs}
       />
 
+      {values?.deliveryMethod === 'shipping' ? (
+        <p className={css.shippingNote}>
+          <FormattedMessage id="ProductOrderForm.shippingCalculatedAtCheckout" />
+        </p>
+      ) : null}
+
       {showBreakdown ? (
         <div className={css.breakdownWrapper}>
           <H6 as={sectionHeadingAs} className={css.bookingBreakdownTitle}>

@@ -18,11 +18,29 @@ const transitionPrivileged = require('./api/transition-privileged');
 const deleteAccount = require('./api/delete-account');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
+const shippingRates = require('./api/shipping/rates');
+const shippingCreateLabel = require('./api/shipping/create-label');
+const shippingLabel = require('./api/shipping/label');
+const shippingStatus = require('./api/shipping/status');
+const shippingEnviaWebhook = require('./api/shipping/envia-webhook');
+const shippingProcessEvents = require('./api/shipping/process-events');
 
 const { authenticateFacebook, authenticateFacebookCallback } = require('./api/auth/facebook');
 const { authenticateGoogle, authenticateGoogleCallback } = require('./api/auth/google');
 
 const router = express.Router();
+
+// Envia webhook needs the raw JSON body for HMAC verification.
+router.post(
+  '/shipping/envia-webhook',
+  bodyParser.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString('utf8');
+    },
+  }),
+  shippingEnviaWebhook
+);
+router.post('/shipping/process-events', bodyParser.json(), shippingProcessEvents);
 
 // ================ API router middleware: ================ //
 
@@ -56,6 +74,10 @@ router.post('/transaction-line-items', transactionLineItems);
 router.post('/initiate-privileged', initiatePrivileged);
 router.post('/transition-privileged', transitionPrivileged);
 router.post('/delete-account', deleteAccount);
+router.post('/shipping/rates', shippingRates);
+router.post('/shipping/create-label', shippingCreateLabel);
+router.post('/shipping/label', shippingLabel);
+router.post('/shipping/status', shippingStatus);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

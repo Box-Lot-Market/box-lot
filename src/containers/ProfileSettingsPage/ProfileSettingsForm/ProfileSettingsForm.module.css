@@ -259,6 +259,35 @@
   width: 100%;
 }
 
+.originLocation {
+  width: 100%;
+}
+
+.originLocationInput {
+  flex-grow: 1;
+
+  /* Safari bugfix: without this Safari will print placeholder to a wrong place */
+  &::-webkit-input-placeholder {
+    line-height: normal;
+  }
+}
+
+.originLocationIcon {
+  display: none;
+}
+
+.originLocationPredictions {
+  position: absolute;
+  width: 100%;
+  top: 100%;
+  left: 0;
+  background-color: var(--marketplaceColor);
+  border-bottom-left-radius: var(--borderRadius);
+  border-bottom-right-radius: var(--borderRadius);
+  box-shadow: var(--boxShadowPopup);
+  z-index: calc(var(--zIndexPopup) + 1);
+}
+
 .firstName {
   width: calc(34% - 9px);
 }

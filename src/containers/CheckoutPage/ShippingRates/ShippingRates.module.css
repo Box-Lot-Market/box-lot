@@ -1,0 +1,46 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  margin: 0 0 24px 0;
+}
+
+.heading {
+  composes: p from global;
+  font-weight: var(--fontWeightBold);
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.hint,
+.error {
+  margin: 0 0 16px 0;
+}
+
+.error {
+  color: var(--colorFail);
+}
+
+.spinner {
+  margin-bottom: 16px;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.optionBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.optionTitle {
+  font-weight: var(--fontWeightBold);
+}
+
+.optionMeta {
+  color: var(--colorGrey700);
+}

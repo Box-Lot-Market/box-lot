@@ -18,6 +18,9 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 
+const { maybeQuoteShippingOrderData, pickupAddressFromListing } = require('../api-util/shipping');
+const { getIntegrationSdk } = require('../api-util/integrationSdk');
+
 const { Money } = sharetribeSdk.types;
 
 const transactionPromise = (sdk, id) => sdk.transactions.show({ id, include: ['listing'] });
@@ -125,7 +128,7 @@ module.exports = (req, res) => {
   let metadataMaybe = {};
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
-    .then(responses => {
+    .then(async responses => {
       const [showTransactionResponse, fetchAssetsResponse] = responses;
       const transaction = showTransactionResponse.data.data;
       const listing = getListingRelationShip(showTransactionResponse.data);
@@ -145,14 +148,47 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
+      const mergedOrderData = getFullOrderData(orderData, bodyParams, currency, existingOffers);
+      const quotedOrderData = await maybeQuoteShippingOrderData(
+        listing.id,
+        mergedOrderData,
+        currency
+      );
+
       lineItems = transactionLineItems(
         listing,
-        getFullOrderData(orderData, bodyParams, currency, existingOffers),
+        quotedOrderData,
         providerCommission,
         customerCommission
       );
 
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
+
+      const protectedData = {
+        ...(bodyParams?.params?.protectedData || {}),
+      };
+      if (quotedOrderData.shippingCarrier && quotedOrderData.shippingService) {
+        protectedData.shippingCarrier = quotedOrderData.shippingCarrier;
+        protectedData.shippingService = quotedOrderData.shippingService;
+        protectedData.shippingFeeInSubunits = quotedOrderData.shippingFeeInSubunits;
+      }
+      if (quotedOrderData.deliveryMethod === 'pickup' && !protectedData.pickupAddress) {
+        try {
+          const integrationListing = await getIntegrationSdk().listings.show({
+            id: listing.id,
+          });
+          const pickupAddress = pickupAddressFromListing(integrationListing.data.data);
+          if (pickupAddress) {
+            protectedData.pickupAddress = pickupAddress;
+          }
+        } catch (e) {
+          // Pickup can still proceed with the public city/state location.
+        }
+      }
+      bodyParams.params = {
+        ...bodyParams.params,
+        protectedData,
+      };
 
       return getTrustedSdk(req, res, tokenStore);
     })

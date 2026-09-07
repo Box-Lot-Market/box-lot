@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { compose } from 'redux';
 import { connect } from 'react-redux';
 
@@ -13,6 +13,7 @@ import {
   pickUserFieldsData,
   showCreateListingLinkForUser,
 } from '../../util/userHelpers';
+import { streetFromLocationField } from '../../util/shipping';
 import { isScrollingDisabled } from '../../ducks/ui.duck';
 
 import { H3, Page, UserNav, NamedLink, LayoutSingleColumn } from '../../components';
@@ -88,7 +89,19 @@ export const ProfileSettingsPageComponent = props => {
   const publicUserFields = userFields.filter(uf => uf.scope === 'public');
 
   const handleSubmit = (values, userType) => {
-    const { firstName, lastName, displayName, bio: rawBio, ...rest } = values;
+    const {
+      firstName,
+      lastName,
+      displayName,
+      bio: rawBio,
+      originName,
+      originPhone,
+      originLocation,
+      originCity,
+      originState,
+      originPostalCode,
+      ...rest
+    } = values;
 
     const displayNameMaybe = displayName
       ? { displayName: displayName.trim() }
@@ -105,6 +118,17 @@ export const ProfileSettingsPageComponent = props => {
       publicData: {
         ...pickUserFieldsData(rest, 'public', userType, userFields),
       },
+      privateData: {
+        originAddress: {
+          name: (originName || '').trim(),
+          phone: (originPhone || '').trim(),
+          street: streetFromLocationField(originLocation),
+          city: (originCity || '').trim(),
+          state: (originState || '').trim(),
+          postalCode: (originPostalCode || '').trim(),
+          country: 'US',
+        },
+      },
     };
     const uploadedImage = props.image;
 
@@ -118,7 +142,8 @@ export const ProfileSettingsPageComponent = props => {
   };
 
   const user = ensureCurrentUser(currentUser);
-  const { firstName, lastName, displayName, bio, publicData } = user?.attributes.profile;
+  const { firstName, lastName, displayName, bio, publicData, privateData } = user?.attributes.profile;
+  const originAddress = privateData?.originAddress || {};
   // I.e. the status is active, not pending-approval or banned
   const isUnauthorizedUser = currentUser && !isUserAuthorized(currentUser);
 
@@ -130,18 +155,42 @@ export const ProfileSettingsPageComponent = props => {
   // ProfileSettingsForm decides if it's allowed to show the input field.
   const displayNameMaybe = isDisplayNameIncluded && displayName ? { displayName } : {};
 
+  // Keep this object stable while save is in progress. A new originLocation object
+  // on each render makes Final Form reset the street field to the last saved user.
+  const initialValues = useMemo(
+    () => ({
+      firstName,
+      lastName,
+      ...displayNameMaybe,
+      bio,
+      profileImage: user.profileImage,
+      originName: originAddress.name || `${firstName || ''} ${lastName || ''}`.trim(),
+      originPhone: originAddress.phone || '',
+      originLocation: originAddress.street
+        ? {
+            search: originAddress.street,
+            selectedPlace: {
+              address: originAddress.street,
+              street: originAddress.street,
+              city: originAddress.city || '',
+              state: originAddress.state || '',
+              postalCode: originAddress.postalCode || '',
+            },
+          }
+        : { search: '', selectedPlace: null },
+      originCity: originAddress.city || '',
+      originState: originAddress.state || '',
+      originPostalCode: originAddress.postalCode || '',
+      ...initialValuesForUserFields(publicData, 'public', userType, userFields),
+    }),
+    [currentUser, userFields, userTypes]
+  );
+
   const profileSettingsForm = user.id ? (
     <ProfileSettingsForm
       className={css.form}
       currentUser={currentUser}
-      initialValues={{
-        firstName,
-        lastName,
-        ...displayNameMaybe,
-        bio,
-        profileImage: user.profileImage,
-        ...initialValuesForUserFields(publicData, 'public', userType, userFields),
-      }}
+      initialValues={initialValues}
       profileImage={profileImage}
       onImageUpload={e => onImageUploadHandler(e, onImageUpload)}
       uploadInProgress={uploadInProgress}
