@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Field } from 'react-final-form';
+import classNames from 'classnames';
 
 import { FormattedMessage } from '../../../util/reactIntl';
 import { fetchShippingRates } from '../../../util/api';
@@ -12,11 +13,27 @@ import { formatMoney } from '../../../util/currency';
 import { types as sdkTypes } from '../../../util/sdkLoader';
 import { Heading, IconSpinner, ValidationError } from '../../../components';
 
+import IconCarrierLogo from './IconCarrierLogo';
 import css from './ShippingRates.module.css';
 
 const { Money } = sdkTypes;
 
 const rateKey = rate => `${rate.carrier}::${rate.service}`;
+
+const rateTitle = rate => {
+  const carrier = (rate.carrier || '').toUpperCase();
+  const service = rate.serviceDescription || rate.service || '';
+  if (!carrier) {
+    return service;
+  }
+  if (!service) {
+    return carrier;
+  }
+  if (service.toUpperCase().includes(carrier)) {
+    return service;
+  }
+  return `${carrier} (${service})`;
+};
 
 /**
  * Fetch Envia rates after the buyer enters a complete US address, then let them pick a service.
@@ -125,29 +142,32 @@ const ShippingRates = props => {
         }
       >
         {({ input, meta }) => (
-          <div>
+          <div className={css.list}>
             {rates.map(rate => {
               const key = rateKey(rate);
               const money = new Money(rate.priceInSubunits, rate.currency || 'USD');
+              const selected = input.value === key;
               return (
-                <label key={key} className={css.option}>
+                <label
+                  key={key}
+                  className={classNames(css.option, { [css.optionSelected]: selected })}
+                >
                   <input
                     className={css.optionRadio}
                     type="radio"
                     name={input.name}
                     value={key}
-                    checked={input.value === key}
+                    checked={selected}
                     onChange={() => input.onChange(key)}
                   />
+                  <IconCarrierLogo carrier={rate.carrier} className={css.logo} />
                   <span className={css.optionBody}>
-                    <span className={css.optionTitle}>
-                      {(rate.carrier || '').toUpperCase()} · {rate.serviceDescription}
-                    </span>
-                    <span className={css.optionMeta}>
-                      {formatMoney(intl, money)}
-                      {rate.deliveryEstimate ? ` · ${rate.deliveryEstimate}` : ''}
-                    </span>
+                    <span className={css.optionTitle}>{rateTitle(rate)}</span>
+                    {rate.deliveryEstimate ? (
+                      <span className={css.optionMeta}>{rate.deliveryEstimate}</span>
+                    ) : null}
                   </span>
+                  <span className={css.optionPrice}>{formatMoney(intl, money)}</span>
                 </label>
               );
             })}
