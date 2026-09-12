@@ -175,6 +175,11 @@ const quoteSelectedRate = async ({ origin, destination, parcel, carrier, service
  * Purchase a shipping label.
  */
 const generateLabel = async ({ origin, destination, parcel, carrier, service, comments }) => {
+  const extraSettings = {
+    printFormat: 'PDF',
+    printSize: 'STOCK_4X6',
+    ...(comments ? { comments } : {}),
+  };
   const json = await enviaFetch(`${ENVIA_API_BASE_URL.replace(/\/$/, '')}/ship/generate/`, {
     method: 'POST',
     body: JSON.stringify(
@@ -184,7 +189,7 @@ const generateLabel = async ({ origin, destination, parcel, carrier, service, co
         parcel,
         carrier,
         service,
-        extraSettings: comments ? { comments } : {},
+        extraSettings,
       })
     ),
   });
