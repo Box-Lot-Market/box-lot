@@ -98,6 +98,10 @@ const ShippingDetails = props => {
   const optionalText = intl.formatMessage({
     id: 'ShippingDetails.optionalText',
   });
+  // Hosted translations may still include {optionalText} on required fields.
+  // Pass an empty value so those leftovers do not render as literal braces.
+  const requiredLabel = id => intl.formatMessage({ id }, { optionalText: '' }).trim();
+  const optionalLabel = id => intl.formatMessage({ id }, { optionalText });
 
   // Use the language set in config.localization.locale to get the correct translations of the country names
   const countryCodes = getCountryCodes(locale);
@@ -116,7 +120,7 @@ const ShippingDetails = props => {
         className={css.fieldFullWidth}
         type="text"
         autoComplete="shipping name"
-        label={intl.formatMessage({ id: 'ShippingDetails.recipientNameLabel' })}
+        label={requiredLabel('ShippingDetails.recipientNameLabel')}
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.recipientNamePlaceholder',
         })}
@@ -132,7 +136,7 @@ const ShippingDetails = props => {
         className={css.fieldFullWidth}
         type="text"
         autoComplete="shipping phoneNumber"
-        label={intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberLabel' })}
+        label={requiredLabel('ShippingDetails.recipientPhoneNumberLabel')}
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.recipientPhoneNumberPlaceholder',
         })}
@@ -149,7 +153,7 @@ const ShippingDetails = props => {
         name="recipientLocation"
         id={`${fieldId}.recipientAddressLine1`}
         disabled={disabled}
-        label={intl.formatMessage({ id: 'ShippingDetails.addressLine1Label' })}
+        label={requiredLabel('ShippingDetails.addressLine1Label')}
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.addressLine1Placeholder',
         })}
@@ -171,10 +175,7 @@ const ShippingDetails = props => {
         className={css.fieldFullWidth}
         type="text"
         autoComplete="shipping address-line2"
-        label={intl.formatMessage(
-          { id: 'ShippingDetails.addressLine2Label' },
-          { optionalText: optionalText }
-        )}
+        label={optionalLabel('ShippingDetails.addressLine2Label')}
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.addressLine2Placeholder',
         })}
@@ -188,7 +189,7 @@ const ShippingDetails = props => {
           className={css.field}
           type="text"
           autoComplete="shipping postal-code"
-          label={intl.formatMessage({ id: 'ShippingDetails.postalCodeLabel' })}
+          label={requiredLabel('ShippingDetails.postalCodeLabel')}
           placeholder={intl.formatMessage({
             id: 'ShippingDetails.postalCodePlaceholder',
           })}
@@ -205,7 +206,7 @@ const ShippingDetails = props => {
           className={css.field}
           type="text"
           autoComplete="shipping address-level2"
-          label={intl.formatMessage({ id: 'ShippingDetails.cityLabel' })}
+          label={requiredLabel('ShippingDetails.cityLabel')}
           placeholder={intl.formatMessage({ id: 'ShippingDetails.cityPlaceholder' })}
           validate={validators.required(intl.formatMessage({ id: 'ShippingDetails.cityRequired' }))}
           onUnmount={() => formApi.change('recipientCity', undefined)}
@@ -219,7 +220,7 @@ const ShippingDetails = props => {
           className={css.field}
           type="text"
           autoComplete="shipping address-level1"
-          label={intl.formatMessage({ id: 'ShippingDetails.stateLabel' })}
+          label={requiredLabel('ShippingDetails.stateLabel')}
           placeholder={intl.formatMessage({ id: 'ShippingDetails.statePlaceholder' })}
           validate={validators.required(
             intl.formatMessage({ id: 'ShippingDetails.stateRequired' })
@@ -232,7 +233,7 @@ const ShippingDetails = props => {
           name="recipientCountry"
           disabled
           className={css.field}
-          label={intl.formatMessage({ id: 'ShippingDetails.countryLabel' })}
+          label={requiredLabel('ShippingDetails.countryLabel')}
           validate={validators.required(
             intl.formatMessage({ id: 'ShippingDetails.countryRequired' })
           )}
