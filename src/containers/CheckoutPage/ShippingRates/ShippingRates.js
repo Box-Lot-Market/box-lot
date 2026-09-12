@@ -132,6 +132,7 @@ const ShippingRates = props => {
               return (
                 <label key={key} className={css.option}>
                   <input
+                    className={css.optionRadio}
                     type="radio"
                     name={input.name}
                     value={key}
