@@ -36,7 +36,7 @@
   gap: 12px;
   width: 100%;
   margin: 0;
-  padding: 12px;
+  padding: 14px 16px;
   border: 1px solid var(--colorGrey100);
   border-radius: 8px;
   background-color: var(--colorWhite);
@@ -52,12 +52,8 @@
   flex-shrink: 0;
   width: 18px;
   height: 18px;
-  margin: 11px 0 0 0;
+  margin: 3px 0 0 0;
   accent-color: var(--marketplaceColor);
-}
-
-.logo {
-  margin-top: 2px;
 }
 
 .optionBody {
@@ -65,7 +61,6 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  padding-top: 2px;
 }
 
 .optionTitle {
@@ -79,7 +74,6 @@
 
 .optionPrice {
   flex-shrink: 0;
-  margin-top: 2px;
   font-weight: var(--fontWeightBold);
   color: var(--marketplaceColor);
   white-space: nowrap;

@@ -13,7 +13,6 @@ import { formatMoney } from '../../../util/currency';
 import { types as sdkTypes } from '../../../util/sdkLoader';
 import { Heading, IconSpinner, ValidationError } from '../../../components';
 
-import IconCarrierLogo from './IconCarrierLogo';
 import css from './ShippingRates.module.css';
 
 const { Money } = sdkTypes;
@@ -160,7 +159,6 @@ const ShippingRates = props => {
                     checked={selected}
                     onChange={() => input.onChange(key)}
                   />
-                  <IconCarrierLogo carrier={rate.carrier} className={css.logo} />
                   <span className={css.optionBody}>
                     <span className={css.optionTitle}>{rateTitle(rate)}</span>
                     {rate.deliveryEstimate ? (
