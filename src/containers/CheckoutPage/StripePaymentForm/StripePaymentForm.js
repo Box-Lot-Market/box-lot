@@ -236,7 +236,7 @@ const LocationOrShippingDetails = props => {
 
   return askShippingDetails ? (
     <>
-      <ShippingDetails intl={intl} formApi={formApi} locale={locale} />
+      <ShippingDetails intl={intl} formApi={formApi} locale={locale} values={values} />
       <ShippingRates intl={intl} values={values} listingId={listingId} form={formApi} />
     </>
   ) : showPickUpLocation ? (

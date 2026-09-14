@@ -22,31 +22,59 @@
 }
 
 .formRow {
-  /* This container uses flexbox layout */
   display: flex;
-  justify-content: space-between;
-  width: 100%;
-
-  /* parent aka root is flexbox, this container takes all available space */
-  flex-grow: 1;
-  flex-shrink: 0;
   flex-wrap: wrap;
+  gap: 24px;
+  width: 100%;
+  margin-top: 24px;
 
   @media (--viewportSmall) {
-    flex-wrap: no-wrap;
+    flex-wrap: nowrap;
   }
 }
 
 .field {
   width: 100%;
-  margin-top: 24px;
+  margin-top: 0;
 
   @media (--viewportSmall) {
-    width: calc(50% - 12px);
+    flex: 1;
+    min-width: 0;
+    width: auto;
   }
 }
 
 .fieldFullWidth {
   width: 100%;
   margin-top: 24px;
+}
+
+.locationField {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.locationInput {
+  flex-grow: 1;
+
+  /* Safari bugfix: without this Safari will print placeholder to a wrong place */
+  &::-webkit-input-placeholder {
+    line-height: normal;
+  }
+}
+
+.locationIcon {
+  display: none;
+}
+
+.locationPredictions {
+  position: absolute;
+  width: 100%;
+  top: 100%;
+  left: 0;
+  background-color: var(--marketplaceColor);
+  border-bottom-left-radius: var(--borderRadius);
+  border-bottom-right-radius: var(--borderRadius);
+  box-shadow: var(--boxShadowPopup);
+  z-index: calc(var(--zIndexPopup) + 1);
 }

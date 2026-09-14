@@ -8,6 +8,166 @@ const ENVIA_WEBHOOK_SECRET = process.env.ENVIA_WEBHOOK_SECRET;
 
 const CARRIERS = ['usps', 'ups', 'fedex'];
 
+const US_STATE_CODES = new Set([
+  'AL',
+  'AK',
+  'AZ',
+  'AR',
+  'CA',
+  'CO',
+  'CT',
+  'DE',
+  'DC',
+  'FL',
+  'GA',
+  'HI',
+  'ID',
+  'IL',
+  'IN',
+  'IA',
+  'KS',
+  'KY',
+  'LA',
+  'ME',
+  'MD',
+  'MA',
+  'MI',
+  'MN',
+  'MS',
+  'MO',
+  'MT',
+  'NE',
+  'NV',
+  'NH',
+  'NJ',
+  'NM',
+  'NY',
+  'NC',
+  'ND',
+  'OH',
+  'OK',
+  'OR',
+  'PA',
+  'RI',
+  'SC',
+  'SD',
+  'TN',
+  'TX',
+  'UT',
+  'VT',
+  'VA',
+  'WA',
+  'WV',
+  'WI',
+  'WY',
+  'AS',
+  'GU',
+  'MP',
+  'PR',
+  'VI',
+  'AA',
+  'AE',
+  'AP',
+]);
+
+const US_STATE_NAMES = {
+  alabama: 'AL',
+  alaska: 'AK',
+  arizona: 'AZ',
+  arkansas: 'AR',
+  california: 'CA',
+  colorado: 'CO',
+  connecticut: 'CT',
+  delaware: 'DE',
+  'district of columbia': 'DC',
+  'washington dc': 'DC',
+  'washington d c': 'DC',
+  florida: 'FL',
+  georgia: 'GA',
+  hawaii: 'HI',
+  idaho: 'ID',
+  illinois: 'IL',
+  indiana: 'IN',
+  iowa: 'IA',
+  kansas: 'KS',
+  kentucky: 'KY',
+  louisiana: 'LA',
+  maine: 'ME',
+  maryland: 'MD',
+  massachusetts: 'MA',
+  michigan: 'MI',
+  minnesota: 'MN',
+  mississippi: 'MS',
+  missouri: 'MO',
+  montana: 'MT',
+  nebraska: 'NE',
+  nevada: 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  ohio: 'OH',
+  oklahoma: 'OK',
+  oregon: 'OR',
+  pennsylvania: 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  tennessee: 'TN',
+  texas: 'TX',
+  utah: 'UT',
+  vermont: 'VT',
+  virginia: 'VA',
+  washington: 'WA',
+  'west virginia': 'WV',
+  wisconsin: 'WI',
+  wyoming: 'WY',
+  'american samoa': 'AS',
+  guam: 'GU',
+  'northern mariana islands': 'MP',
+  'puerto rico': 'PR',
+  'virgin islands': 'VI',
+  'us virgin islands': 'VI',
+  'u s virgin islands': 'VI',
+  'armed forces americas': 'AA',
+  'armed forces europe': 'AE',
+  'armed forces pacific': 'AP',
+};
+
+/**
+ * Map a US state name or common variant to a 2-letter code.
+ * Pass through values that are already a valid code.
+ *
+ * @param {string} state
+ * @returns {string}
+ */
+const normalizeUsStateCode = state => {
+  if (state == null) {
+    return '';
+  }
+  const trimmed = String(state).trim();
+  if (!trimmed) {
+    return '';
+  }
+  const upper = trimmed.toUpperCase();
+  if (US_STATE_CODES.has(upper)) {
+    return upper;
+  }
+  const compact = upper.replace(/[^A-Z]/g, '');
+  if (compact.length === 2 && US_STATE_CODES.has(compact)) {
+    return compact;
+  }
+  const nameKey = trimmed
+    .toLowerCase()
+    .replace(/\./g, ' ')
+    .replace(/,/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return US_STATE_NAMES[nameKey] || trimmed;
+};
+
 const enviaError = (message, status = 400) => {
   const error = new Error(message);
   error.status = status;
@@ -39,7 +199,8 @@ const enviaFetch = async (url, options = {}) => {
     json = null;
   }
   if (!response.ok) {
-    const message = json?.error?.message || json?.message || `Envia request failed (${response.status})`;
+    const message =
+      json?.error?.message || json?.message || `Envia request failed (${response.status})`;
     log.error(new Error(message), 'envia-request-failed', { url, status: response.status, json });
     throw enviaError(message, response.status >= 500 ? 502 : 400);
   }
@@ -66,7 +227,10 @@ const validateUsPostalCode = async postalCode => {
 };
 
 const toEnviaAddress = (address, { residential = true } = {}) => {
-  const street = [address.street || address.line1, address.line2].filter(Boolean).join(' ').trim();
+  const street = [address.street || address.line1, address.line2]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
   return {
     name: address.name,
     company: address.company || '',
@@ -75,7 +239,7 @@ const toEnviaAddress = (address, { residential = true } = {}) => {
     street,
     number: address.number || '',
     city: address.city,
-    state: address.state,
+    state: normalizeUsStateCode(address.state),
     country: address.country || 'US',
     postalCode: address.postalCode,
     type: residential ? 2 : 1,
@@ -239,7 +403,10 @@ const verifyWebhookSignature = ({ rawBody, signatureHeader, timestamp, event }) 
     return false;
   }
   const payload = `${timestamp}.${event}.${rawBody}`;
-  const digest = crypto.createHmac('sha256', ENVIA_WEBHOOK_SECRET).update(payload).digest('hex');
+  const digest = crypto
+    .createHmac('sha256', ENVIA_WEBHOOK_SECRET)
+    .update(payload)
+    .digest('hex');
   const expected = `v1=${digest}`;
   const given = Buffer.from(signatureHeader);
   const exp = Buffer.from(expected);
@@ -250,6 +417,7 @@ const verifyWebhookSignature = ({ rawBody, signatureHeader, timestamp, event }) 
 };
 
 exports.CARRIERS = CARRIERS;
+exports.normalizeUsStateCode = normalizeUsStateCode;
 exports.validateUsPostalCode = validateUsPostalCode;
 exports.quoteRates = quoteRates;
 exports.quoteSelectedRate = quoteSelectedRate;

@@ -104,7 +104,7 @@ describe('CheckoutPage', () => {
     routeConfiguration,
   };
 
-  it('Check that purchase has relevant info', () => {
+  it('Check that purchase has relevant info', async () => {
     const listing = createListing(
       'listing1',
       { publicData: { transactionProcessAlias: 'default-purchase/release-1', unitType: 'item' } },
@@ -154,7 +154,7 @@ describe('CheckoutPage', () => {
     expect(screen.getByRole('heading', { name: shippingHeading })).toBeInTheDocument();
     expect(getTextbox('ShippingDetails.recipientNameLabel')).toBeInTheDocument();
     expect(getTextbox('ShippingDetails.recipientPhoneNumberLabel')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.addressLine1Label')).toBeInTheDocument();
+    expect(await screen.findByLabelText('ShippingDetails.addressLine1Label')).toBeInTheDocument();
     expect(getTextbox('ShippingDetails.addressLine2Label')).toBeInTheDocument();
     expect(getTextbox('ShippingDetails.postalCodeLabel')).toBeInTheDocument();
     expect(getTextbox('ShippingDetails.cityLabel')).toBeInTheDocument();
