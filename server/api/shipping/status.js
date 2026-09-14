@@ -1,6 +1,11 @@
 const { getSdk, handleError } = require('../../api-util/sdk');
 const { getIntegrationSdk } = require('../../api-util/integrationSdk');
-const { shippingMetadata, LABEL_STATUS, httpError } = require('../../api-util/shipping');
+const {
+  shippingMetadata,
+  trackUrlForShipment,
+  LABEL_STATUS,
+  httpError,
+} = require('../../api-util/shipping');
 
 const entityId = entity => entity?.id?.uuid || entity?.data?.id?.uuid;
 
@@ -36,14 +41,12 @@ module.exports = (req, res) => {
         scanned,
       };
 
-      if (isProvider && purchased) {
-        payload.hasLabel = true;
+      if (purchased) {
         payload.trackingNumber = shipping.trackingNumber || null;
-        payload.trackUrl = shipping.trackUrl || null;
-      }
-      if (isCustomer && scanned) {
-        payload.trackingNumber = shipping.trackingNumber || null;
-        payload.trackUrl = shipping.trackUrl || null;
+        payload.trackUrl = trackUrlForShipment(shipping);
+        if (isProvider) {
+          payload.hasLabel = true;
+        }
       }
 
       res.status(200).json({ data: payload });

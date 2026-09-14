@@ -8,7 +8,7 @@ import { Heading, SecondaryButton } from '../../../components';
 import css from './TransactionPanel.module.css';
 
 /**
- * Show shipping label (seller) and tracking (after carrier scan for the buyer).
+ * Show the shipping label (seller) and tracking after the label is bought.
  *
  * @component
  */
@@ -45,7 +45,6 @@ const ShippingStatusMaybe = props => {
 
   const classes = classNames(rootClassName || css.deliveryInfoContainer, className);
   const labelStatus = status?.labelStatus;
-  const scanned = !!status?.scanned;
   const trackingNumber = status?.trackingNumber;
   const trackUrl = status?.trackUrl;
 
@@ -87,6 +86,11 @@ const ShippingStatusMaybe = props => {
             <FormattedMessage id="TransactionPanel.shippingLabelPending" />
           </p>
         ) : null}
+        {isCustomer && !trackingNumber ? (
+          <p>
+            <FormattedMessage id="TransactionPanel.shippingLabelPending" />
+          </p>
+        ) : null}
         {isProvider && status?.hasLabel ? (
           <SecondaryButton type="button" inProgress={downloadInProgress} onClick={handleDownload}>
             <FormattedMessage id="TransactionPanel.downloadShippingLabel" />
@@ -97,7 +101,7 @@ const ShippingStatusMaybe = props => {
             <FormattedMessage id="TransactionPanel.shippingLabelDownloadFailed" />
           </p>
         ) : null}
-        {isProvider && trackingNumber ? (
+        {trackingNumber ? (
           <p>
             <FormattedMessage
               id="TransactionPanel.shippingTracking"
@@ -108,25 +112,9 @@ const ShippingStatusMaybe = props => {
             />
           </p>
         ) : null}
-        {isCustomer && !scanned ? (
+        {trackUrl && trackingNumber ? (
           <p>
-            <FormattedMessage id="TransactionPanel.shippingTrackingAfterScan" />
-          </p>
-        ) : null}
-        {isCustomer && scanned && trackingNumber ? (
-          <p>
-            <FormattedMessage
-              id="TransactionPanel.shippingTracking"
-              values={{
-                carrier: (status.carrier || '').toUpperCase(),
-                trackingNumber,
-              }}
-            />
-          </p>
-        ) : null}
-        {trackUrl && ((isProvider && trackingNumber) || (isCustomer && scanned)) ? (
-          <p>
-            <a href={trackUrl} target="_blank" rel="noreferrer">
+            <a href={trackUrl} target="_blank" rel="noopener noreferrer">
               <FormattedMessage id="TransactionPanel.shippingTrackLink" />
             </a>
           </p>
