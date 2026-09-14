@@ -26,6 +26,15 @@ export const CreateListingMenuLink = props => {
 };
 
 /**
+ * True when a measured topbar link has a usable layout width.
+ * `0` means the desktop topbar is hidden (`display: none` below --viewportLarge).
+ *
+ * @param {number} width
+ * @returns {boolean}
+ */
+const hasPositiveWidth = width => typeof width === 'number' && width > 0;
+
+/**
  * Link component that can be used on TopbarDesktop.
  *
  * @param {*} props containing linkConfig including resolved 'route' params for NamedLink.
@@ -64,22 +73,37 @@ const PriorityLink = ({ linkConfig }) => {
 const PriorityLinks = props => {
   const containerRef = useRef(null);
 
-  // With this useEffect, we measure the widths of each rendered priority link
-  // This is done before the real rendering and it's done outside the viewport.
-  // Re-run when links are reset without widths (e.g. create-listing visibility change).
+  // Measure link widths before grouping. Skip 0-width results (desktop topbar is
+  // `display: none` below --viewportLarge). A 0 width used to look unmeasured and
+  // call setLinks forever.
   useEffect(() => {
-    const isMeasured = props.links?.[0]?.width;
-    if (containerRef.current && props.links?.length > 0 && !isMeasured) {
-      const linksFromRenderedWrapper = [...containerRef.current.childNodes];
-      let cumulatedWidth = 0;
-      // Generate an array of link configs with width & cumulatedWidth included
-      const linksWithWidths = props.links.reduce((links, l, i) => {
-        const width = linksFromRenderedWrapper[i].offsetWidth;
-        cumulatedWidth = cumulatedWidth + width;
-        return [...links, { ...l, width, cumulatedWidth }];
-      }, []);
-      props.setLinks(linksWithWidths);
+    const node = containerRef.current;
+    if (!node) {
+      return undefined;
     }
+
+    const measure = () => {
+      if (!props.links?.length || hasPositiveWidth(props.links[0]?.width)) {
+        return;
+      }
+      const childElements = [...node.children];
+      let cumulatedWidth = 0;
+      const linksWithWidths = [];
+      for (let i = 0; i < props.links.length; i++) {
+        const width = childElements[i]?.offsetWidth;
+        if (!hasPositiveWidth(width)) {
+          return;
+        }
+        cumulatedWidth += width;
+        linksWithWidths.push({ ...props.links[i], width, cumulatedWidth });
+      }
+      props.setLinks(linksWithWidths);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [props.links, props.setLinks]);
 
   const { links, priorityLinks } = props;
