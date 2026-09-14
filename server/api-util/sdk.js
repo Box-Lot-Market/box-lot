@@ -40,8 +40,8 @@ const maxSockets = MAX_SOCKETS ? parseInt(MAX_SOCKETS, 10) : MAX_SOCKETS_DEFAULT
 // This will reduce the request time for consecutive requests by
 // reusing the existing TCP connection, thus eliminating the time used
 // for setting up new TCP connections.
-const httpAgent = new http.Agent({ keepAlive: true, maxSockets });
-const httpsAgent = new https.Agent({ keepAlive: true, maxSockets });
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets, family: 4 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets, family: 4 });
 
 const memoryStore = token => {
   const store = sharetribeSdk.tokenStore.memoryStore();
