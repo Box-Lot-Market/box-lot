@@ -5,6 +5,7 @@ const { generateLabel } = require('../../api-util/envia');
 const {
   loadListingShippingContext,
   assertShippableListing,
+  assertUsDestination,
   destinationFromShippingDetails,
   shippingMetadata,
   LABEL_STATUS,
@@ -46,6 +47,7 @@ const createLabelForTransaction = async transaction => {
   if (!carrier || !service) {
     throw httpError('This order is missing the selected shipping service.');
   }
+  assertUsDestination(destination);
   const context = await loadListingShippingContext(listingId);
   assertShippableListing(context);
   const label = await generateLabel({

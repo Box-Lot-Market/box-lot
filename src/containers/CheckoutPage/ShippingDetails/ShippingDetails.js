@@ -72,8 +72,13 @@ const ShippingDetails = props => {
         placeholder={intl.formatMessage({
           id: 'ShippingDetails.recipientPhoneNumberPlaceholder',
         })}
-        validate={validators.required(
-          intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberRequired' })
+        validate={validators.composeValidators(
+          validators.required(
+            intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberRequired' })
+          ),
+          validators.validShippingPhone(
+            intl.formatMessage({ id: 'ShippingDetails.recipientPhoneNumberInvalid' })
+          )
         )}
         onUnmount={() => formApi.change('recipientPhoneNumber', undefined)}
       />

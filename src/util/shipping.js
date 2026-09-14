@@ -1,5 +1,16 @@
 const PO_BOX_PATTERN = /\b(?:p\.?\s*o\.?\s*box|post\s*office\s*box)\b/i;
 
+export const MIN_SHIPPING_PHONE_ALPHANUMERIC = 10;
+
+/**
+ * Envia rejects label buy when a phone has fewer than 10 letters or digits.
+ *
+ * @param {string} phone
+ * @returns {boolean}
+ */
+export const isValidShippingPhone = phone =>
+  String(phone || '').replace(/[^A-Za-z0-9]/g, '').length >= MIN_SHIPPING_PHONE_ALPHANUMERIC;
+
 /**
  * True when Origin address has every field Envia needs.
  *
@@ -11,7 +22,10 @@ export const isOriginComplete = origin => {
     return false;
   }
   const required = ['name', 'phone', 'street', 'city', 'state', 'postalCode'];
-  return required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0);
+  return (
+    required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0) &&
+    isValidShippingPhone(origin.phone)
+  );
 };
 
 export const originFromCurrentUser = currentUser =>
@@ -115,4 +129,4 @@ export const destinationFromCheckoutValues = values => ({
 export const isCheckoutDestinationComplete = dest =>
   ['name', 'phone', 'street', 'city', 'state', 'postalCode'].every(
     key => typeof dest?.[key] === 'string' && dest[key].trim().length > 0
-  );
+  ) && isValidShippingPhone(dest.phone);

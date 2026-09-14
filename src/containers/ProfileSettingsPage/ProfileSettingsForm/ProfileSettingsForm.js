@@ -516,6 +516,12 @@ class ProfileSettingsFormComponent extends Component {
                   id="originPhone"
                   name="originPhone"
                   label={intl.formatMessage({ id: 'ProfileSettingsForm.originPhoneLabel' })}
+                  placeholder={intl.formatMessage({
+                    id: 'ProfileSettingsForm.originPhonePlaceholder',
+                  })}
+                  validate={validators.validShippingPhone(
+                    intl.formatMessage({ id: 'ProfileSettingsForm.originPhoneInvalid' })
+                  )}
                 />
                 <OriginAddressFields form={form} values={values} intl={intl} />
               </div>

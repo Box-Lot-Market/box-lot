@@ -49,12 +49,20 @@ const isPoBoxAddress = address => {
   return PO_BOX_PATTERN.test(fields);
 };
 
+const MIN_SHIPPING_PHONE_ALPHANUMERIC = 10;
+
+const isValidShippingPhone = phone =>
+  String(phone || '').replace(/[^A-Za-z0-9]/g, '').length >= MIN_SHIPPING_PHONE_ALPHANUMERIC;
+
 const isOriginComplete = origin => {
   if (!origin) {
     return false;
   }
   const required = ['name', 'phone', 'street', 'city', 'state', 'postalCode'];
-  return required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0);
+  return (
+    required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0) &&
+    isValidShippingPhone(origin.phone)
+  );
 };
 
 const parcelFromListing = listing => {
@@ -171,6 +179,9 @@ const assertUsDestination = destination => {
   if (missing.length) {
     throw httpError('Enter a complete US shipping address.');
   }
+  if (!isValidShippingPhone(destination.phone)) {
+    throw httpError('Enter a US phone number with at least 10 digits.');
+  }
 };
 
 /**
@@ -231,6 +242,33 @@ const pickupAddressFromListing = listing => listing?.attributes?.privateData?.pi
 
 const shippingMetadata = transaction => transaction?.attributes?.metadata?.shipping || {};
 
+const CARRIER_TRACK_URLS = {
+  ups: trackingNumber =>
+    `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNumber)}`,
+  usps: trackingNumber =>
+    `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`,
+  fedex: trackingNumber =>
+    `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNumber)}`,
+};
+
+/**
+ * Envia track URL, or a carrier page built from the tracking number.
+ *
+ * @param {Object} shipping
+ * @returns {string|null}
+ */
+const trackUrlForShipment = shipping => {
+  if (shipping?.trackUrl) {
+    return shipping.trackUrl;
+  }
+  const trackingNumber = shipping?.trackingNumber;
+  if (!trackingNumber) {
+    return null;
+  }
+  const builder = CARRIER_TRACK_URLS[String(shipping.carrier || '').toLowerCase()];
+  return builder ? builder(trackingNumber) : null;
+};
+
 const isUnusedLabel = shipping =>
   shipping?.labelStatus === LABEL_STATUS.PURCHASED && !shipping?.scannedAt;
 
@@ -259,6 +297,7 @@ exports.quoteShippingFee = quoteShippingFee;
 exports.maybeQuoteShippingOrderData = maybeQuoteShippingOrderData;
 exports.pickupAddressFromListing = pickupAddressFromListing;
 exports.shippingMetadata = shippingMetadata;
+exports.trackUrlForShipment = trackUrlForShipment;
 exports.isUnusedLabel = isUnusedLabel;
 exports.isCarrierScanStatus = isCarrierScanStatus;
 exports.httpError = httpError;
