@@ -1,5 +1,176 @@
 const PO_BOX_PATTERN = /\b(?:p\.?\s*o\.?\s*box|post\s*office\s*box)\b/i;
 
+export const MIN_SHIPPING_PHONE_ALPHANUMERIC = 10;
+
+/**
+ * Envia rejects label buy when a phone has fewer than 10 letters or digits.
+ *
+ * @param {string} phone
+ * @returns {boolean}
+ */
+export const isValidShippingPhone = phone =>
+  String(phone || '').replace(/[^A-Za-z0-9]/g, '').length >= MIN_SHIPPING_PHONE_ALPHANUMERIC;
+
+const US_STATE_CODES = new Set([
+  'AL',
+  'AK',
+  'AZ',
+  'AR',
+  'CA',
+  'CO',
+  'CT',
+  'DE',
+  'DC',
+  'FL',
+  'GA',
+  'HI',
+  'ID',
+  'IL',
+  'IN',
+  'IA',
+  'KS',
+  'KY',
+  'LA',
+  'ME',
+  'MD',
+  'MA',
+  'MI',
+  'MN',
+  'MS',
+  'MO',
+  'MT',
+  'NE',
+  'NV',
+  'NH',
+  'NJ',
+  'NM',
+  'NY',
+  'NC',
+  'ND',
+  'OH',
+  'OK',
+  'OR',
+  'PA',
+  'RI',
+  'SC',
+  'SD',
+  'TN',
+  'TX',
+  'UT',
+  'VT',
+  'VA',
+  'WA',
+  'WV',
+  'WI',
+  'WY',
+  'AS',
+  'GU',
+  'MP',
+  'PR',
+  'VI',
+  'AA',
+  'AE',
+  'AP',
+]);
+
+const US_STATE_NAMES = {
+  alabama: 'AL',
+  alaska: 'AK',
+  arizona: 'AZ',
+  arkansas: 'AR',
+  california: 'CA',
+  colorado: 'CO',
+  connecticut: 'CT',
+  delaware: 'DE',
+  'district of columbia': 'DC',
+  'washington dc': 'DC',
+  'washington d c': 'DC',
+  florida: 'FL',
+  georgia: 'GA',
+  hawaii: 'HI',
+  idaho: 'ID',
+  illinois: 'IL',
+  indiana: 'IN',
+  iowa: 'IA',
+  kansas: 'KS',
+  kentucky: 'KY',
+  louisiana: 'LA',
+  maine: 'ME',
+  maryland: 'MD',
+  massachusetts: 'MA',
+  michigan: 'MI',
+  minnesota: 'MN',
+  mississippi: 'MS',
+  missouri: 'MO',
+  montana: 'MT',
+  nebraska: 'NE',
+  nevada: 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  ohio: 'OH',
+  oklahoma: 'OK',
+  oregon: 'OR',
+  pennsylvania: 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  tennessee: 'TN',
+  texas: 'TX',
+  utah: 'UT',
+  vermont: 'VT',
+  virginia: 'VA',
+  washington: 'WA',
+  'west virginia': 'WV',
+  wisconsin: 'WI',
+  wyoming: 'WY',
+  'american samoa': 'AS',
+  guam: 'GU',
+  'northern mariana islands': 'MP',
+  'puerto rico': 'PR',
+  'virgin islands': 'VI',
+  'us virgin islands': 'VI',
+  'u s virgin islands': 'VI',
+  'armed forces americas': 'AA',
+  'armed forces europe': 'AE',
+  'armed forces pacific': 'AP',
+};
+
+/**
+ * Map a US state name or common variant to a 2-letter code.
+ * Pass through values that are already a valid code.
+ *
+ * @param {string} state
+ * @returns {string}
+ */
+export const normalizeUsStateCode = state => {
+  if (state == null) {
+    return '';
+  }
+  const trimmed = String(state).trim();
+  if (!trimmed) {
+    return '';
+  }
+  const upper = trimmed.toUpperCase();
+  if (US_STATE_CODES.has(upper)) {
+    return upper;
+  }
+  const compact = upper.replace(/[^A-Z]/g, '');
+  if (compact.length === 2 && US_STATE_CODES.has(compact)) {
+    return compact;
+  }
+  const nameKey = trimmed
+    .toLowerCase()
+    .replace(/\./g, ' ')
+    .replace(/,/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return US_STATE_NAMES[nameKey] || trimmed;
+};
+
 /**
  * True when Origin address has every field Envia needs.
  *
@@ -11,7 +182,10 @@ export const isOriginComplete = origin => {
     return false;
   }
   const required = ['name', 'phone', 'street', 'city', 'state', 'postalCode'];
-  return required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0);
+  return (
+    required.every(key => typeof origin[key] === 'string' && origin[key].trim().length > 0) &&
+    isValidShippingPhone(origin.phone)
+  );
 };
 
 export const originFromCurrentUser = currentUser =>
@@ -69,17 +243,26 @@ export const pickupAddressFromPlace = (place, building) => ({
 });
 
 /**
+ * Structured address fields from a geocoder place.
+ * State is normalized to a US 2-letter code when possible.
+ *
+ * @param {Object} place
+ * @returns {{street: string, city: string, state: string, postalCode: string}}
+ */
+export const addressFieldsFromPlace = place => ({
+  street: place?.street || (place?.address || '').split(',')[0].trim(),
+  city: place?.city || '',
+  state: normalizeUsStateCode(place?.state),
+  postalCode: place?.postalCode || '',
+});
+
+/**
  * Structured origin fields from a geocoder place.
  *
  * @param {Object} place
  * @returns {{street: string, city: string, state: string, postalCode: string}}
  */
-export const originFieldsFromPlace = place => ({
-  street: place?.street || (place?.address || '').split(',')[0].trim(),
-  city: place?.city || '',
-  state: place?.state || '',
-  postalCode: place?.postalCode || '',
-});
+export const originFieldsFromPlace = addressFieldsFromPlace;
 
 /**
  * Street line from a LocationAutocompleteInput field value.
@@ -100,19 +283,88 @@ export const streetFromLocationField = location => {
   return (location.search || '').trim();
 };
 
-export const destinationFromCheckoutValues = values => ({
-  name: values.recipientName,
-  phone: values.recipientPhoneNumber,
-  street: values.recipientAddressLine1,
-  line1: values.recipientAddressLine1,
-  line2: values.recipientAddressLine2,
-  city: values.recipientCity,
-  state: values.recipientState,
-  postalCode: values.recipientPostal,
-  country: values.recipientCountry || 'US',
-});
+export const destinationFromCheckoutValues = values => {
+  const street =
+    (typeof values.recipientAddressLine1 === 'string' && values.recipientAddressLine1.trim()) ||
+    streetFromLocationField(values.recipientLocation);
+  return {
+    name: values.recipientName,
+    phone: values.recipientPhoneNumber,
+    street,
+    line1: street,
+    line2: values.recipientAddressLine2,
+    city: values.recipientCity,
+    state: values.recipientState,
+    postalCode: values.recipientPostal,
+    country: values.recipientCountry || 'US',
+  };
+};
 
 export const isCheckoutDestinationComplete = dest =>
   ['name', 'phone', 'street', 'city', 'state', 'postalCode'].every(
     key => typeof dest?.[key] === 'string' && dest[key].trim().length > 0
-  );
+  ) && isValidShippingPhone(dest.phone);
+
+const CARRIER_TRACK_URLS = {
+  ups: trackingNumber =>
+    `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNumber)}`,
+  usps: trackingNumber =>
+    `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`,
+  fedex: trackingNumber =>
+    `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNumber)}`,
+};
+
+const UNUSABLE_TRACK_HOSTS = new Set(['test.envia.com']);
+
+const isUsableTrackUrl = url => {
+  if (typeof url !== 'string' || !url.trim()) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !UNUSABLE_TRACK_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch (e) {
+    return false;
+  }
+};
+
+/**
+ * Usable Envia track URL, or a carrier page built from the tracking number.
+ *
+ * @param {Object} shipping
+ * @returns {string|null}
+ */
+export const trackUrlForShipment = shipping => {
+  if (isUsableTrackUrl(shipping?.trackUrl)) {
+    return shipping.trackUrl;
+  }
+  const trackingNumber = shipping?.trackingNumber;
+  if (!trackingNumber) {
+    return null;
+  }
+  const builder = CARRIER_TRACK_URLS[String(shipping.carrier || '').toLowerCase()];
+  return builder ? builder(trackingNumber) : null;
+};
+
+/**
+ * Shipping status shown on the order page from transaction metadata.
+ *
+ * @param {Object} shipping
+ * @param {string} [fallbackCarrier]
+ * @returns {Object|null}
+ */
+export const shippingStatusFromMetadata = (shipping, fallbackCarrier) => {
+  if (!shipping || typeof shipping !== 'object') {
+    return null;
+  }
+  const purchased = shipping.labelStatus === 'purchased';
+  return {
+    labelStatus: shipping.labelStatus || 'pending',
+    carrier: shipping.carrier || fallbackCarrier || null,
+    service: shipping.service || null,
+    trackingNumber: purchased ? shipping.trackingNumber || null : null,
+    trackUrl: purchased ? trackUrlForShipment(shipping) : null,
+    hasLabel: purchased,
+    scanned: !!shipping.scannedAt,
+  };
+};

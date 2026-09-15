@@ -5,6 +5,7 @@ const {
   shippingMetadata,
   isCarrierScanStatus,
   LABEL_STATUS,
+  toUuidString,
 } = require('../../api-util/shipping');
 
 const findTransactionByTrackingNumber = async trackingNumber => {
@@ -37,7 +38,7 @@ const handleScan = async payload => {
   }
   const integrationSdk = getIntegrationSdk();
   await integrationSdk.transactions.updateMetadata({
-    id: transaction.id,
+    id: toUuidString(transaction.id),
     metadata: {
       shipping: {
         ...shipping,
@@ -50,7 +51,7 @@ const handleScan = async payload => {
   const state = transaction.attributes?.state;
   if (state === 'state/purchased') {
     await integrationSdk.transactions.transition({
-      id: transaction.id,
+      id: toUuidString(transaction.id),
       transition: 'transition/operator-mark-delivered',
       params: {},
     });

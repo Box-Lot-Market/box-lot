@@ -24,17 +24,43 @@
   margin-bottom: 16px;
 }
 
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .option {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--colorGrey100);
+  border-radius: 8px;
+  background-color: var(--colorWhite);
   cursor: pointer;
+}
+
+.optionSelected {
+  border-color: var(--marketplaceColor);
+  box-shadow: inset 0 0 0 1px var(--marketplaceColor);
+}
+
+.optionRadio {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0 0;
+  accent-color: var(--marketplaceColor);
 }
 
 .optionBody {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-width: 0;
 }
 
 .optionTitle {
@@ -43,4 +69,12 @@
 
 .optionMeta {
   color: var(--colorGrey700);
+  margin-top: 2px;
+}
+
+.optionPrice {
+  flex-shrink: 0;
+  font-weight: var(--fontWeightBold);
+  color: var(--marketplaceColor);
+  white-space: nowrap;
 }

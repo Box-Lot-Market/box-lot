@@ -5,10 +5,14 @@ const { generateLabel } = require('../../api-util/envia');
 const {
   loadListingShippingContext,
   assertShippableListing,
+  assertUsDestination,
   destinationFromShippingDetails,
+  emailFromUser,
   shippingMetadata,
+  trackUrlForShipment,
   LABEL_STATUS,
   httpError,
+  toUuidString,
 } = require('../../api-util/shipping');
 
 const PURCHASED_TRANSITIONS = ['transition/confirm-payment'];
@@ -46,19 +50,31 @@ const createLabelForTransaction = async transaction => {
   if (!carrier || !service) {
     throw httpError('This order is missing the selected shipping service.');
   }
+  assertUsDestination(destination);
+  const integrationSdk = getIntegrationSdk();
+  const customerId = toUuidString(transaction.relationships?.customer?.data?.id);
+  if (customerId && !destination.email) {
+    const customerResponse = await integrationSdk.users.show({ id: customerId });
+    destination.email = emailFromUser(customerResponse.data.data);
+  }
+  if (!destination.email) {
+    throw httpError('This order is missing the buyer email for the shipping label.');
+  }
   const context = await loadListingShippingContext(listingId);
   assertShippableListing(context);
+  if (!context.origin?.email) {
+    throw httpError('The seller account is missing an email for the shipping label.');
+  }
   const label = await generateLabel({
     origin: context.origin,
     destination,
     parcel: context.parcel,
     carrier,
     service,
-    comments: `boxlot-tx:${transaction.id.uuid}`,
+    comments: `boxlot-tx:${toUuidString(transaction.id)}`,
   });
-  const integrationSdk = getIntegrationSdk();
   await integrationSdk.transactions.updateMetadata({
-    id: transaction.id,
+    id: toUuidString(transaction.id),
     metadata: {
       shipping: {
         ...shippingMetadata(transaction),
@@ -66,7 +82,11 @@ const createLabelForTransaction = async transaction => {
         service: label.service,
         shipmentId: label.shipmentId,
         trackingNumber: label.trackingNumber,
-        trackUrl: label.trackUrl,
+        trackUrl: trackUrlForShipment({
+          trackUrl: label.trackUrl,
+          trackingNumber: label.trackingNumber,
+          carrier: label.carrier,
+        }),
         labelUrl: label.labelUrl,
         labelStatus: LABEL_STATUS.PURCHASED,
         enviaPrice: label.totalPrice,
@@ -79,7 +99,7 @@ const createLabelForTransaction = async transaction => {
 const markLabelFailed = async transaction => {
   const integrationSdk = getIntegrationSdk();
   await integrationSdk.transactions.updateMetadata({
-    id: transaction.id,
+    id: toUuidString(transaction.id),
     metadata: {
       shipping: {
         ...shippingMetadata(transaction),
@@ -96,7 +116,7 @@ const createLabelHandler = (req, res) => {
   Promise.all([
     sdk.currentUser.show(),
     getIntegrationSdk().transactions.show({
-      id: transactionId,
+      id: toUuidString(transactionId),
       include: ['customer', 'listing'],
     }),
   ])

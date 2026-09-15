@@ -6,6 +6,7 @@ const {
   isUnusedLabel,
   CANCEL_TRANSITIONS,
   LABEL_STATUS,
+  toUuidString,
 } = require('../../api-util/shipping');
 const createLabelHandler = require('./create-label');
 const { createLabelForTransaction, markLabelFailed } = createLabelHandler;
@@ -47,7 +48,7 @@ module.exports = (req, res) => {
         let transaction;
         try {
           const txResponse = await integrationSdk.transactions.show({
-            id: resourceId,
+            id: toUuidString(resourceId),
             include: ['listing'],
           });
           transaction = txResponse.data.data;
@@ -90,7 +91,7 @@ module.exports = (req, res) => {
               trackingNumber: shipping.trackingNumber,
             });
             await integrationSdk.transactions.updateMetadata({
-              id: transaction.id,
+              id: toUuidString(transaction.id),
               metadata: {
                 shipping: {
                   ...shipping,

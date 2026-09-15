@@ -2,19 +2,29 @@ import React, { useEffect, useState } from 'react';
 import classNames from 'classnames';
 
 import { FormattedMessage } from '../../../util/reactIntl';
+import { shippingStatusFromMetadata } from '../../../util/shipping';
 import { downloadShippingLabel, fetchShippingStatus } from '../../../util/api';
 import { Heading, SecondaryButton } from '../../../components';
 
 import css from './TransactionPanel.module.css';
 
 /**
- * Show shipping label (seller) and tracking (after carrier scan for the buyer).
+ * Show the shipping label (seller) and tracking after the label is bought.
  *
  * @component
  */
 const ShippingStatusMaybe = props => {
-  const { className, rootClassName, transactionId, deliveryMethod, isProvider, isCustomer } = props;
-  const [status, setStatus] = useState(null);
+  const {
+    className,
+    rootClassName,
+    transactionId,
+    deliveryMethod,
+    isProvider,
+    isCustomer,
+    shipping,
+    shippingCarrier,
+  } = props;
+  const [status, setStatus] = useState(() => shippingStatusFromMetadata(shipping, shippingCarrier));
   const [downloadInProgress, setDownloadInProgress] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
 
@@ -45,7 +55,6 @@ const ShippingStatusMaybe = props => {
 
   const classes = classNames(rootClassName || css.deliveryInfoContainer, className);
   const labelStatus = status?.labelStatus;
-  const scanned = !!status?.scanned;
   const trackingNumber = status?.trackingNumber;
   const trackUrl = status?.trackUrl;
 
@@ -82,7 +91,12 @@ const ShippingStatusMaybe = props => {
             <FormattedMessage id="TransactionPanel.shippingLabelFailed" />
           </p>
         ) : null}
-        {isProvider && (!labelStatus || labelStatus === 'pending') ? (
+        {isProvider && status && (!labelStatus || labelStatus === 'pending') ? (
+          <p>
+            <FormattedMessage id="TransactionPanel.shippingLabelPending" />
+          </p>
+        ) : null}
+        {isCustomer && status && !trackingNumber ? (
           <p>
             <FormattedMessage id="TransactionPanel.shippingLabelPending" />
           </p>
@@ -97,8 +111,8 @@ const ShippingStatusMaybe = props => {
             <FormattedMessage id="TransactionPanel.shippingLabelDownloadFailed" />
           </p>
         ) : null}
-        {isProvider && trackingNumber ? (
-          <p>
+        {trackingNumber ? (
+          <p className={css.shippingTracking}>
             <FormattedMessage
               id="TransactionPanel.shippingTracking"
               values={{
@@ -106,29 +120,14 @@ const ShippingStatusMaybe = props => {
                 trackingNumber,
               }}
             />
-          </p>
-        ) : null}
-        {isCustomer && !scanned ? (
-          <p>
-            <FormattedMessage id="TransactionPanel.shippingTrackingAfterScan" />
-          </p>
-        ) : null}
-        {isCustomer && scanned && trackingNumber ? (
-          <p>
-            <FormattedMessage
-              id="TransactionPanel.shippingTracking"
-              values={{
-                carrier: (status.carrier || '').toUpperCase(),
-                trackingNumber,
-              }}
-            />
-          </p>
-        ) : null}
-        {trackUrl && ((isProvider && trackingNumber) || (isCustomer && scanned)) ? (
-          <p>
-            <a href={trackUrl} target="_blank" rel="noreferrer">
-              <FormattedMessage id="TransactionPanel.shippingTrackLink" />
-            </a>
+            {trackUrl ? (
+              <>
+                <br />
+                <a href={trackUrl} target="_blank" rel="noopener noreferrer">
+                  <FormattedMessage id="TransactionPanel.shippingTrackLink" />
+                </a>
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>

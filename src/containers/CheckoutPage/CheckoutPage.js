@@ -67,7 +67,6 @@ const CheckoutPageComponent = props => {
     currentUser,
     params,
     scrollingDisabled,
-    speculateTransactionInProgress,
     onInquiryWithoutPayment,
     initiateOrderError,
     pageData,
@@ -104,6 +103,8 @@ const CheckoutPageComponent = props => {
       )
     : 'Checkout page is loading data';
 
+  // Keep CheckoutPageWithPayment mounted while a rate re-quote is in progress.
+  // Gating on speculateTransactionInProgress unmounted the form and wiped address fields.
   return processName && isInquiryProcess ? (
     <CheckoutPageWithInquiryProcess
       config={config}
@@ -120,7 +121,7 @@ const CheckoutPageComponent = props => {
       transactionFieldConfigs={transactionFieldConfigs}
       {...props}
     />
-  ) : processName && !isInquiryProcess && !speculateTransactionInProgress ? (
+  ) : processName && !isInquiryProcess ? (
     <CheckoutPageWithPayment
       config={config}
       routeConfiguration={routeConfiguration}

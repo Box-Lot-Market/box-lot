@@ -43,8 +43,12 @@ A Shipment the carrier has not scanned. Envia can cancel it and refund Postage t
 _Avoid_: void, refund (alone)
 
 **Carrier scan**:
-The first time the carrier records the Parcel. This marks the order delivered. The buyer sees tracking only after this scan.
+The first time the carrier records the Parcel. This marks the order delivered.
 _Avoid_: shipped button, mark-delivered
+
+**Tracking**:
+The carrier tracking number and track link for a Shipment. The buyer and seller see them after the label is bought. The buyer does not get the label PDF.
+_Avoid_: label number, shipped notification
 
 **In-transit order**:
 A shipping order after Carrier scan. It is not auto-refunded. An operator handles any cancel.

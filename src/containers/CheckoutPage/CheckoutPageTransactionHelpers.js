@@ -3,6 +3,7 @@ import { createShippingLabel } from '../../util/api';
 import { findRouteByRouteName } from '../../util/routes';
 import { ensureStripeCustomer, ensureTransaction } from '../../util/data';
 import { formatMoney } from '../../util/currency';
+import { streetFromLocationField } from '../../util/shipping';
 import { NEGOTIATION_PROCESS_NAME, resolveLatestProcessName } from '../../transactions/transaction';
 import { storeData } from './CheckoutPageSessionHelpers';
 
@@ -100,9 +101,14 @@ export const getShippingDetailsMaybe = formValues => {
     recipientCity,
     recipientState,
     recipientCountry,
+    recipientLocation,
   } = formValues;
 
-  return recipientName && recipientAddressLine1 && recipientPostal
+  const line1 =
+    (typeof recipientAddressLine1 === 'string' && recipientAddressLine1.trim()) ||
+    streetFromLocationField(recipientLocation);
+
+  return recipientName && line1 && recipientPostal
     ? {
         shippingDetails: {
           name: recipientName,
@@ -110,7 +116,7 @@ export const getShippingDetailsMaybe = formValues => {
           address: {
             city: recipientCity,
             country: recipientCountry,
-            line1: recipientAddressLine1,
+            line1,
             line2: recipientAddressLine2,
             postalCode: recipientPostal,
             state: recipientState,

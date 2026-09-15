@@ -5,6 +5,17 @@
 */
 
 const fs = require('fs');
+const dns = require('dns');
+const net = require('net');
+
+// Node 17+ follows DNS order (often AAAA first). Broken IPv6 (VPN) then times out
+// Sharetribe asset CDN and other HTTPS calls. Prefer IPv4 and disable Happy Eyeballs.
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+  net.setDefaultAutoSelectFamily(false);
+}
 
 const NODE_ENV = process.env.NODE_ENV;
 

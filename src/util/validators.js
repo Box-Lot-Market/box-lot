@@ -1,6 +1,7 @@
 import { types as sdkTypes } from './sdkLoader';
 import { diffInTime } from './dates';
 import { extractYouTubeID } from './string';
+import { isValidShippingPhone } from './shipping';
 
 const { LatLng, Money } = sdkTypes;
 
@@ -81,6 +82,20 @@ export const requiredSelectTreeOption = message => value => {
 export const minLength = (message, minimumLength) => value => {
   const hasLength = value && typeof value.length === 'number';
   return hasLength && value.length >= minimumLength ? VALID : message;
+};
+
+/**
+ * Envia needs at least 10 letters or digits to buy a label. Empty values are
+ * left to `required`.
+ *
+ * @param {string} message
+ * @returns {Function}
+ */
+export const validShippingPhone = message => value => {
+  if (!isNonEmptyString(value)) {
+    return VALID;
+  }
+  return isValidShippingPhone(value) ? VALID : message;
 };
 
 export const maxLength = (message, maximumLength) => value => {
