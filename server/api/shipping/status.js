@@ -5,6 +5,7 @@ const {
   trackUrlForShipment,
   LABEL_STATUS,
   httpError,
+  toUuidString,
 } = require('../../api-util/shipping');
 
 const entityId = entity => entity?.id?.uuid || entity?.data?.id?.uuid;
@@ -16,7 +17,7 @@ module.exports = (req, res) => {
   Promise.all([
     sdk.currentUser.show(),
     getIntegrationSdk().transactions.show({
-      id: transactionId,
+      id: toUuidString(transactionId),
       include: ['provider', 'customer'],
     }),
   ])

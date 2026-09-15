@@ -198,7 +198,8 @@ const enviaFetch = async (url, options = {}) => {
   } catch (e) {
     json = null;
   }
-  if (!response.ok) {
+  const enviaFailed = !response.ok || json?.meta === 'error';
+  if (enviaFailed) {
     const message =
       json?.error?.message || json?.message || `Envia request failed (${response.status})`;
     log.error(new Error(message), 'envia-request-failed', { url, status: response.status, json });
@@ -359,7 +360,8 @@ const generateLabel = async ({ origin, destination, parcel, carrier, service, co
   });
   const row = Array.isArray(json?.data) ? json.data[0] : json?.data;
   if (!row?.trackingNumber) {
-    throw enviaError('Envia did not return a shipping label.', 502);
+    const message = json?.error?.message || 'Envia did not return a shipping label.';
+    throw enviaError(message, 502);
   }
   return {
     carrier: row.carrier || carrier,

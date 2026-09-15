@@ -14,11 +14,17 @@ const LABEL_STATUS = {
 
 const PRE_SCAN_STATUSES = [
   'pending',
+  'created',
   'label created',
   'pre-transit',
+  'information',
   'information received',
   'not yet in system',
   'shipping information received',
+  'canceled',
+  'cancelled',
+  'n/a',
+  'na',
 ];
 
 const CANCEL_TRANSITIONS = [
@@ -53,6 +59,20 @@ const MIN_SHIPPING_PHONE_ALPHANUMERIC = 10;
 
 const isValidShippingPhone = phone =>
   String(phone || '').replace(/[^A-Za-z0-9]/g, '').length >= MIN_SHIPPING_PHONE_ALPHANUMERIC;
+
+/**
+ * Integration SDK query params only accept its own UUID class. Marketplace SDK
+ * UUID objects from Transit deserialize fail instanceof and throw.
+ *
+ * @param {string|Object} id
+ * @returns {string|null}
+ */
+const toUuidString = id => {
+  if (typeof id === 'string' && id) {
+    return id;
+  }
+  return id?.uuid || null;
+};
 
 const isOriginComplete = origin => {
   if (!origin) {
@@ -90,6 +110,11 @@ const parcelFromListing = listing => {
   };
 };
 
+const emailFromUser = user => {
+  const email = user?.attributes?.email;
+  return typeof email === 'string' && email.trim() ? email.trim() : '';
+};
+
 const originFromUser = user => {
   const origin = user?.attributes?.profile?.privateData?.originAddress;
   if (!isOriginComplete(origin)) {
@@ -98,6 +123,7 @@ const originFromUser = user => {
   return {
     name: origin.name.trim(),
     phone: origin.phone.trim(),
+    email: emailFromUser(user),
     street: origin.street.trim(),
     city: origin.city.trim(),
     state: origin.state.trim(),
@@ -108,9 +134,14 @@ const originFromUser = user => {
 
 const destinationFromShippingDetails = shippingDetails => {
   const address = shippingDetails?.address || {};
+  const email =
+    typeof shippingDetails?.email === 'string' && shippingDetails.email.trim()
+      ? shippingDetails.email.trim()
+      : '';
   return {
     name: shippingDetails?.name,
     phone: shippingDetails?.phoneNumber,
+    email,
     street: address.line1,
     line1: address.line1,
     line2: address.line2,
@@ -129,7 +160,7 @@ const destinationFromShippingDetails = shippingDetails => {
  */
 const loadListingShippingContext = async listingId => {
   const integrationSdk = getIntegrationSdk();
-  const id = typeof listingId === 'string' ? listingId : listingId?.uuid;
+  const id = toUuidString(listingId);
   const listingResponse = await integrationSdk.listings.show({
     id,
     include: ['author'],
@@ -251,14 +282,28 @@ const CARRIER_TRACK_URLS = {
     `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNumber)}`,
 };
 
+const UNUSABLE_TRACK_HOSTS = new Set(['test.envia.com']);
+
+const isUsableTrackUrl = url => {
+  if (typeof url !== 'string' || !url.trim()) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !UNUSABLE_TRACK_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch (e) {
+    return false;
+  }
+};
+
 /**
- * Envia track URL, or a carrier page built from the tracking number.
+ * Usable Envia track URL, or a carrier page built from the tracking number.
  *
  * @param {Object} shipping
  * @returns {string|null}
  */
 const trackUrlForShipment = shipping => {
-  if (shipping?.trackUrl) {
+  if (isUsableTrackUrl(shipping?.trackUrl)) {
     return shipping.trackUrl;
   }
   const trackingNumber = shipping?.trackingNumber;
@@ -290,6 +335,8 @@ exports.isOriginComplete = isOriginComplete;
 exports.parcelFromListing = parcelFromListing;
 exports.originFromUser = originFromUser;
 exports.destinationFromShippingDetails = destinationFromShippingDetails;
+exports.emailFromUser = emailFromUser;
+exports.toUuidString = toUuidString;
 exports.loadListingShippingContext = loadListingShippingContext;
 exports.assertShippableListing = assertShippableListing;
 exports.assertUsDestination = assertUsDestination;
