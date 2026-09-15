@@ -304,3 +304,67 @@ export const isCheckoutDestinationComplete = dest =>
   ['name', 'phone', 'street', 'city', 'state', 'postalCode'].every(
     key => typeof dest?.[key] === 'string' && dest[key].trim().length > 0
   ) && isValidShippingPhone(dest.phone);
+
+const CARRIER_TRACK_URLS = {
+  ups: trackingNumber =>
+    `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNumber)}`,
+  usps: trackingNumber =>
+    `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`,
+  fedex: trackingNumber =>
+    `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNumber)}`,
+};
+
+const UNUSABLE_TRACK_HOSTS = new Set(['test.envia.com']);
+
+const isUsableTrackUrl = url => {
+  if (typeof url !== 'string' || !url.trim()) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !UNUSABLE_TRACK_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch (e) {
+    return false;
+  }
+};
+
+/**
+ * Usable Envia track URL, or a carrier page built from the tracking number.
+ *
+ * @param {Object} shipping
+ * @returns {string|null}
+ */
+export const trackUrlForShipment = shipping => {
+  if (isUsableTrackUrl(shipping?.trackUrl)) {
+    return shipping.trackUrl;
+  }
+  const trackingNumber = shipping?.trackingNumber;
+  if (!trackingNumber) {
+    return null;
+  }
+  const builder = CARRIER_TRACK_URLS[String(shipping.carrier || '').toLowerCase()];
+  return builder ? builder(trackingNumber) : null;
+};
+
+/**
+ * Shipping status shown on the order page from transaction metadata.
+ *
+ * @param {Object} shipping
+ * @param {string} [fallbackCarrier]
+ * @returns {Object|null}
+ */
+export const shippingStatusFromMetadata = (shipping, fallbackCarrier) => {
+  if (!shipping || typeof shipping !== 'object') {
+    return null;
+  }
+  const purchased = shipping.labelStatus === 'purchased';
+  return {
+    labelStatus: shipping.labelStatus || 'pending',
+    carrier: shipping.carrier || fallbackCarrier || null,
+    service: shipping.service || null,
+    trackingNumber: purchased ? shipping.trackingNumber || null : null,
+    trackUrl: purchased ? trackUrlForShipment(shipping) : null,
+    hasLabel: purchased,
+    scanned: !!shipping.scannedAt,
+  };
+};

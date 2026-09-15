@@ -399,6 +399,11 @@
   }
 }
 
+.shippingTracking {
+  margin: 0;
+  padding: 0;
+}
+
 .bookingLocationContent,
 .pickupInfoContent {
   composes: marketplaceSmallFontStyles from global;

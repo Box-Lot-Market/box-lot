@@ -132,6 +132,7 @@ export class TransactionPanelComponent extends Component {
       transactionFieldsComponent,
       sendMessageForm,
       transactionId,
+      shipping,
     } = this.props;
 
     const hasTransitions = transitions.length > 0;
@@ -278,6 +279,8 @@ export class TransactionPanelComponent extends Component {
                   deliveryMethod={deliveryMethod}
                   isProvider={isProvider}
                   isCustomer={isCustomer}
+                  shipping={shipping}
+                  shippingCarrier={protectedData?.shippingCarrier}
                 />
                 <BookingLocationMaybe
                   className={css.deliveryInfoSection}

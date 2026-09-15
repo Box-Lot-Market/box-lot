@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import classNames from 'classnames';
 
 import { FormattedMessage } from '../../../util/reactIntl';
+import { shippingStatusFromMetadata } from '../../../util/shipping';
 import { downloadShippingLabel, fetchShippingStatus } from '../../../util/api';
 import { Heading, SecondaryButton } from '../../../components';
 
@@ -13,8 +14,17 @@ import css from './TransactionPanel.module.css';
  * @component
  */
 const ShippingStatusMaybe = props => {
-  const { className, rootClassName, transactionId, deliveryMethod, isProvider, isCustomer } = props;
-  const [status, setStatus] = useState(null);
+  const {
+    className,
+    rootClassName,
+    transactionId,
+    deliveryMethod,
+    isProvider,
+    isCustomer,
+    shipping,
+    shippingCarrier,
+  } = props;
+  const [status, setStatus] = useState(() => shippingStatusFromMetadata(shipping, shippingCarrier));
   const [downloadInProgress, setDownloadInProgress] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
 
@@ -81,12 +91,12 @@ const ShippingStatusMaybe = props => {
             <FormattedMessage id="TransactionPanel.shippingLabelFailed" />
           </p>
         ) : null}
-        {isProvider && (!labelStatus || labelStatus === 'pending') ? (
+        {isProvider && status && (!labelStatus || labelStatus === 'pending') ? (
           <p>
             <FormattedMessage id="TransactionPanel.shippingLabelPending" />
           </p>
         ) : null}
-        {isCustomer && !trackingNumber ? (
+        {isCustomer && status && !trackingNumber ? (
           <p>
             <FormattedMessage id="TransactionPanel.shippingLabelPending" />
           </p>
@@ -102,7 +112,7 @@ const ShippingStatusMaybe = props => {
           </p>
         ) : null}
         {trackingNumber ? (
-          <p>
+          <p className={css.shippingTracking}>
             <FormattedMessage
               id="TransactionPanel.shippingTracking"
               values={{
@@ -110,13 +120,14 @@ const ShippingStatusMaybe = props => {
                 trackingNumber,
               }}
             />
-          </p>
-        ) : null}
-        {trackUrl && trackingNumber ? (
-          <p>
-            <a href={trackUrl} target="_blank" rel="noopener noreferrer">
-              <FormattedMessage id="TransactionPanel.shippingTrackLink" />
-            </a>
+            {trackUrl ? (
+              <>
+                <br />
+                <a href={trackUrl} target="_blank" rel="noopener noreferrer">
+                  <FormattedMessage id="TransactionPanel.shippingTrackLink" />
+                </a>
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>
